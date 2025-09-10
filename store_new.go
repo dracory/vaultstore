@@ -3,7 +3,7 @@ package vaultstore
 import (
 	"errors"
 
-	"github.com/gouniverse/base/database"
+	"github.com/dracory/database"
 )
 
 // NewStore creates a new entity store

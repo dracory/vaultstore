@@ -1,8 +1,8 @@
 # Vault Store
 
-[![Tests Status](https://github.com/gouniverse/vaultstore/actions/workflows/tests.yml/badge.svg?branch=main)](https://github.com/gouniverse/vaultstore/actions/workflows/tests.yml)
-[![Go Report Card](https://goreportcard.com/badge/github.com/gouniverse/vaultstore)](https://goreportcard.com/report/github.com/gouniverse/vaultstore)
-[![PkgGoDev](https://pkg.go.dev/badge/github.com/gouniverse/vaultstore)](https://pkg.go.dev/github.com/gouniverse/vaultstore)
+[![Tests Status](https://github.com/dracory/vaultstore/actions/workflows/tests.yml/badge.svg?branch=main)](https://github.com/dracory/vaultstore/actions/workflows/tests.yml)
+[![Go Report Card](https://goreportcard.com/badge/github.com/dracory/vaultstore)](https://goreportcard.com/report/github.com/dracory/vaultstore)
+[![PkgGoDev](https://pkg.go.dev/badge/github.com/dracory/vaultstore)](https://pkg.go.dev/github.com/dracory/vaultstore)
 
 Vault - a secure value storage (data-at-rest) implementation for Go.
 
@@ -84,7 +84,7 @@ err := vault.TokenSoftDelete(token)
 Click any of the buttons below to start a new development environment to contribute to the codebase without having to install anything on your machine:
 
 [![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/gouniverse/vaultstore)
-[![Open in Gitpod](https://gitpod.io/button/open-in-gitpod.svg)](https://gitpod.io/#https://github.com/gouniverse/vaultstore)
+[![Open in Gitpod](https://gitpod.io/button/open-in-gitpod.svg)](https://gitpod.io/#https://github.com/dracory/vaultstore)
 
 ## Changelog
 

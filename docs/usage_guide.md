@@ -11,7 +11,7 @@ VaultStore is meant to be integrated into your application as a library, providi
 ## Installation
 
 ```bash
-go get github.com/gouniverse/vaultstore
+go get github.com/dracory/vaultstore
 ```
 
 ## Basic Usage
@@ -23,7 +23,7 @@ To use VaultStore, you first need to create a store instance:
 ```go
 import (
     "database/sql"
-    "github.com/gouniverse/vaultstore"
+    "github.com/dracory/vaultstore"
     _ "github.com/mattn/go-sqlite3"
 )
 

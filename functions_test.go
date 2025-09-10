@@ -3,9 +3,6 @@ package vaultstore
 import "testing"
 
 func Test_generateToken(t *testing.T) {
-	type args struct {
-		tokenLength int
-	}
 	tests := []struct {
 		name        string
 		tokenLength int

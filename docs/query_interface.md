@@ -11,7 +11,7 @@ The `RecordQueryInterface` allows for complex querying of records in the VaultSt
 To create a new query, use the `RecordQuery` function:
 
 ```go
-import "github.com/gouniverse/vaultstore"
+import "github.com/dracory/vaultstore"
 
 query := vaultstore.RecordQuery()
 ```

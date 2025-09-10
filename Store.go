@@ -11,7 +11,7 @@ import (
 	_ "github.com/doug-martin/goqu/v9/dialect/postgres"
 	_ "github.com/doug-martin/goqu/v9/dialect/sqlite3"
 	_ "github.com/doug-martin/goqu/v9/dialect/sqlserver"
-	"github.com/gouniverse/base/database"
+	"github.com/dracory/database"
 )
 
 // Store defines a session store
