@@ -3,26 +3,17 @@ package vaultstore
 import (
 	"context"
 	"errors"
-	"os"
 	"strings"
 	"testing"
 
 	"database/sql"
 
-	_ "github.com/mattn/go-sqlite3"
+	_ "modernc.org/sqlite"
 )
 
-func initDB(filepath string) (*sql.DB, error) {
-	if filepath != ":memory:" && fileExists(filepath) {
-		err := os.Remove(filepath) // remove database
-
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	dsn := filepath + "?parseTime=true"
-	db, err := sql.Open("sqlite3", dsn)
+func initDB() (*sql.DB, error) {
+	dsn := ":memory:?parseTime=true"
+	db, err := sql.Open("sqlite", dsn)
 	if err != nil {
 		return nil, err
 	}
@@ -30,8 +21,8 @@ func initDB(filepath string) (*sql.DB, error) {
 	return db, nil
 }
 
-func initStore(filepath string) (StoreInterface, error) {
-	db, err := initDB(filepath)
+func initStore() (StoreInterface, error) {
+	db, err := initDB()
 	if err != nil {
 		return nil, err
 	}
@@ -54,7 +45,7 @@ func initStore(filepath string) (StoreInterface, error) {
 }
 
 func TestWithAutoMigrateFalse(t *testing.T) {
-	db, err := initDB(":memory:")
+	db, err := initDB()
 
 	if err != nil {
 		t.Fatalf("initDB: Expected [err] to be nil received [%v]", err.Error())
@@ -90,7 +81,7 @@ func TestWithAutoMigrateFalse(t *testing.T) {
 }
 
 func Test_Store_AutoMigrate(t *testing.T) {
-	db, err := initDB(":memory:")
+	db, err := initDB()
 
 	if err != nil {
 		t.Fatalf("initDB: Expected [err] to be nil received [%v]", err.Error())
@@ -202,7 +193,7 @@ func Test_isBase64(t *testing.T) {
 
 func Test_NewStore_Errors(t *testing.T) {
 	// Test with empty table name
-	db, err := initDB(":memory:")
+	db, err := initDB()
 	if err != nil {
 		t.Fatalf("initDB: Expected [err] to be nil received [%v]", err.Error())
 	}
@@ -236,7 +227,7 @@ func Test_NewStore_Errors(t *testing.T) {
 }
 
 func Test_Store_EnableDebug(t *testing.T) {
-	db, err := initDB(":memory:")
+	db, err := initDB()
 	if err != nil {
 		t.Fatalf("initDB: Expected [err] to be nil received [%v]", err.Error())
 	}
@@ -271,7 +262,7 @@ func Test_Store_EnableDebug(t *testing.T) {
 }
 
 func Test_Store_SqlCreateTable(t *testing.T) {
-	db, err := initDB(":memory:")
+	db, err := initDB()
 	if err != nil {
 		t.Fatalf("initDB: Expected [err] to be nil received [%v]", err.Error())
 	}
@@ -299,7 +290,7 @@ func Test_Store_SqlCreateTable(t *testing.T) {
 }
 
 func Test_Store_DbDriverName(t *testing.T) {
-	db, err := initDB(":memory:")
+	db, err := initDB()
 	if err != nil {
 		t.Fatalf("initDB: Expected [err] to be nil received [%v]", err.Error())
 	}
@@ -339,7 +330,7 @@ func Test_Store_DbDriverName(t *testing.T) {
 }
 
 func Test_Store_toQuerableContext(t *testing.T) {
-	db, err := initDB(":memory:")
+	db, err := initDB()
 	if err != nil {
 		t.Fatalf("initDB: Expected [err] to be nil received [%v]", err.Error())
 	}

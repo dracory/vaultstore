@@ -3,7 +3,7 @@ package vaultstore
 import "github.com/dracory/sb"
 
 // SqlCreateTable returns a SQL string for creating the setting table
-func (store *Store) SqlCreateTable() string {
+func (store *storeImplementation) SqlCreateTable() string {
 	sql := sb.NewBuilder(sb.DatabaseDriverName(store.db)).
 		Table(store.vaultTableName).
 		Column(sb.Column{

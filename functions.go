@@ -41,6 +41,12 @@ func isBase64(value string) bool {
 //  1. Generate random lowercase string
 //  2. Prefix with "tk_"
 func generateToken(tokenLength int) (string, error) {
+	const minPayloadLength = 12
+	minTotalLength := len(TOKEN_PREFIX) + minPayloadLength
+	if tokenLength < minTotalLength {
+		return "", fmt.Errorf("tokenLength must be at least %d (prefix %d + payload %d)", minTotalLength, len(TOKEN_PREFIX), minPayloadLength)
+	}
+
 	token := randomFromGamma(tokenLength-len(TOKEN_PREFIX), "abcdefghijklmnopqrstuvwxyz0123456789")
 
 	return fmt.Sprintf("%s%s", TOKEN_PREFIX, token), nil

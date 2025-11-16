@@ -7,7 +7,7 @@ import (
 )
 
 func Test_Store_TokenCreate(t *testing.T) {
-	store, err := initStore(":memory:")
+	store, err := initStore()
 
 	if err != nil {
 		t.Fatalf("Test_Store_TokenCreate: Expected [err] to be nil received [%v]", err.Error())
@@ -34,7 +34,7 @@ func Test_Store_TokenCreate(t *testing.T) {
 }
 
 func Test_Store_TokenCreateCustom(t *testing.T) {
-	store, err := initStore(":memory:")
+	store, err := initStore()
 
 	if err != nil {
 		t.Fatalf("Test_Store_TokenCreateCustom: Expected [err] to be nil received [%v]", err.Error())
@@ -59,7 +59,7 @@ func Test_Store_TokenCreateCustom(t *testing.T) {
 }
 
 func Test_Store_TokenDelete(t *testing.T) {
-	store, err := initStore(":memory:")
+	store, err := initStore()
 
 	if err != nil {
 		t.Fatalf("Test_Store_ValueDelete: Expected [err] to be nil received [%v]", err.Error())
@@ -88,7 +88,7 @@ func Test_Store_TokenDelete(t *testing.T) {
 }
 
 func TestTokenExists(t *testing.T) {
-	store, err := initStore(":memory:")
+	store, err := initStore()
 
 	if err != nil {
 		t.Fatalf("TestTokenExists: Expected [err] to be nil received [%v]", err.Error())
@@ -125,7 +125,7 @@ func TestTokenExists(t *testing.T) {
 }
 
 func Test_Store_TokenRead(t *testing.T) {
-	store, err := initStore(":memory:")
+	store, err := initStore()
 
 	if err != nil {
 		t.Fatalf("Test_Store_TokenRead: Expected [err] to be nil received [%v]", err.Error())
@@ -149,7 +149,7 @@ func Test_Store_TokenRead(t *testing.T) {
 }
 
 func Test_Store_TokenUpdate(t *testing.T) {
-	store, err := initStore(":memory:")
+	store, err := initStore()
 
 	if err != nil {
 		t.Fatalf("Test_Store_TokenUpdate: Expected [err] to be nil received [%v]", err.Error())
@@ -189,7 +189,7 @@ func Test_Store_TokenUpdate(t *testing.T) {
 }
 
 func Test_TokensRead(t *testing.T) {
-	store, err := initStore(":memory:")
+	store, err := initStore()
 
 	if err != nil {
 		t.Fatalf("Test_TokensRead: Expected [err] to be nil received [%v]", err.Error())
@@ -223,7 +223,7 @@ func Test_TokensRead(t *testing.T) {
 }
 
 func Test_Store_TokenSoftDelete(t *testing.T) {
-	store, err := initStore(":memory:")
+	store, err := initStore()
 	if err != nil {
 		t.Fatalf("Test_Store_TokenSoftDelete: Expected [err] to be nil received [%v]", err.Error())
 	}

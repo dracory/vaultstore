@@ -12,7 +12,7 @@ import (
 	"github.com/samber/lo"
 )
 
-func (store *Store) RecordCount(ctx context.Context, query RecordQueryInterface) (int64, error) {
+func (store *storeImplementation) RecordCount(ctx context.Context, query RecordQueryInterface) (int64, error) {
 	query = query.SetCountOnly(true)
 	dataset, _, err := query.toSelectDataset(store)
 
@@ -55,7 +55,7 @@ func (store *Store) RecordCount(ctx context.Context, query RecordQueryInterface)
 	return i, nil
 }
 
-func (store *Store) RecordCreate(ctx context.Context, record RecordInterface) error {
+func (store *storeImplementation) RecordCreate(ctx context.Context, record RecordInterface) error {
 	record.SetCreatedAt(carbon.Now(carbon.UTC).ToDateTimeString(carbon.UTC))
 	record.SetUpdatedAt(carbon.Now(carbon.UTC).ToDateTimeString(carbon.UTC))
 
@@ -92,7 +92,7 @@ func (store *Store) RecordCreate(ctx context.Context, record RecordInterface) er
 	return nil
 }
 
-func (store *Store) RecordDeleteByID(ctx context.Context, recordID string) error {
+func (store *storeImplementation) RecordDeleteByID(ctx context.Context, recordID string) error {
 	if recordID == "" {
 		return errors.New("record id is empty")
 	}
@@ -117,7 +117,7 @@ func (store *Store) RecordDeleteByID(ctx context.Context, recordID string) error
 	return nil
 }
 
-func (store *Store) RecordDeleteByToken(ctx context.Context, token string) error {
+func (store *storeImplementation) RecordDeleteByToken(ctx context.Context, token string) error {
 	if token == "" {
 		return errors.New("token is empty")
 	}
@@ -143,7 +143,7 @@ func (store *Store) RecordDeleteByToken(ctx context.Context, token string) error
 }
 
 // FindByID finds an entry by ID
-func (st *Store) RecordFindByID(ctx context.Context, id string) (RecordInterface, error) {
+func (st *storeImplementation) RecordFindByID(ctx context.Context, id string) (RecordInterface, error) {
 	if id == "" {
 		return nil, errors.New("record id is empty")
 	}
@@ -173,7 +173,7 @@ func (st *Store) RecordFindByID(ctx context.Context, id string) (RecordInterface
 // Returns:
 // - record: The record found
 // - err: An error if something went wrong
-func (st *Store) RecordFindByToken(ctx context.Context, token string) (RecordInterface, error) {
+func (st *storeImplementation) RecordFindByToken(ctx context.Context, token string) (RecordInterface, error) {
 	if token == "" {
 		return nil, errors.New("token is empty")
 	}
@@ -191,7 +191,7 @@ func (st *Store) RecordFindByToken(ctx context.Context, token string) (RecordInt
 	return records[0], nil
 }
 
-func (store *Store) RecordList(ctx context.Context, query RecordQueryInterface) ([]RecordInterface, error) {
+func (store *storeImplementation) RecordList(ctx context.Context, query RecordQueryInterface) ([]RecordInterface, error) {
 	err := query.Validate()
 
 	if err != nil {
@@ -231,7 +231,7 @@ func (store *Store) RecordList(ctx context.Context, query RecordQueryInterface) 
 }
 
 // RecordSoftDelete soft deletes a record by setting the soft_deleted_at column to the current time
-func (store *Store) RecordSoftDelete(ctx context.Context, record RecordInterface) error {
+func (store *storeImplementation) RecordSoftDelete(ctx context.Context, record RecordInterface) error {
 	if record == nil {
 		return errors.New("record is nil")
 	}
@@ -243,7 +243,7 @@ func (store *Store) RecordSoftDelete(ctx context.Context, record RecordInterface
 }
 
 // RecordSoftDeleteByID soft deletes a record by ID by setting the soft_deleted_at column to the current time
-func (store *Store) RecordSoftDeleteByID(ctx context.Context, recordID string) error {
+func (store *storeImplementation) RecordSoftDeleteByID(ctx context.Context, recordID string) error {
 	if recordID == "" {
 		return errors.New("record id is empty")
 	}
@@ -262,7 +262,7 @@ func (store *Store) RecordSoftDeleteByID(ctx context.Context, recordID string) e
 }
 
 // RecordSoftDeleteByToken soft deletes a record by token by setting the soft_deleted_at column to the current time
-func (store *Store) RecordSoftDeleteByToken(ctx context.Context, token string) error {
+func (store *storeImplementation) RecordSoftDeleteByToken(ctx context.Context, token string) error {
 	if token == "" {
 		return errors.New("token is empty")
 	}
@@ -280,7 +280,7 @@ func (store *Store) RecordSoftDeleteByToken(ctx context.Context, token string) e
 	return store.RecordSoftDelete(ctx, record)
 }
 
-func (store *Store) RecordUpdate(ctx context.Context, record RecordInterface) error {
+func (store *storeImplementation) RecordUpdate(ctx context.Context, record RecordInterface) error {
 	if record == nil {
 		return errors.New("record is nil")
 	}

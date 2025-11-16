@@ -6,7 +6,7 @@ import (
 )
 
 func Test_Store_RecordCount(t *testing.T) {
-	store, err := initStore(":memory:")
+	store, err := initStore()
 
 	if err != nil {
 		t.Fatalf("Test_Store_RecordCount: Expected [err] to be nil received [%v]", err.Error())
@@ -47,7 +47,7 @@ func Test_Store_RecordCount(t *testing.T) {
 }
 
 func Test_Store_RecordCreate(t *testing.T) {
-	store, err := initStore(":memory:")
+	store, err := initStore()
 
 	if err != nil {
 		t.Fatal("Test_Store_RecordCreate: Expected [err] to be nil received: ", err.Error())
@@ -73,7 +73,7 @@ func Test_Store_RecordCreate(t *testing.T) {
 }
 
 func Test_Store_RecordFindByID(t *testing.T) {
-	store, err := initStore(":memory:")
+	store, err := initStore()
 	if err != nil {
 		t.Fatalf("Test_Store_RecordFindByID: Expected [err] to be nil received [%v]", err.Error())
 	}
@@ -155,7 +155,7 @@ func Test_Store_RecordFindByID(t *testing.T) {
 }
 
 func Test_Store_RecordFindByToken(t *testing.T) {
-	store, err := initStore(":memory:")
+	store, err := initStore()
 	if err != nil {
 		t.Fatalf("Test_Store_RecordFindByToken: Expected [err] to be nil received [%v]", err.Error())
 	}
@@ -206,7 +206,7 @@ func Test_Store_RecordFindByToken(t *testing.T) {
 }
 
 func Test_Store_RecordList(t *testing.T) {
-	store, err := initStore(":memory:")
+	store, err := initStore()
 	if err != nil {
 		t.Fatalf("Test_Store_RecordList: Expected [err] to be nil received [%v]", err.Error())
 	}
@@ -265,7 +265,7 @@ func Test_Store_RecordList(t *testing.T) {
 }
 
 func Test_Store_RecordUpdate(t *testing.T) {
-	store, err := initStore(":memory:")
+	store, err := initStore()
 	if err != nil {
 		t.Fatalf("Test_Store_RecordUpdate: Expected [err] to be nil received [%v]", err.Error())
 	}
@@ -317,7 +317,7 @@ func Test_Store_RecordUpdate(t *testing.T) {
 }
 
 func Test_Store_RecordDeleteByID(t *testing.T) {
-	store, err := initStore(":memory:")
+	store, err := initStore()
 	if err != nil {
 		t.Fatalf("Test_Store_RecordDeleteByID: Expected [err] to be nil received [%v]", err.Error())
 	}
@@ -371,7 +371,7 @@ func Test_Store_RecordDeleteByID(t *testing.T) {
 }
 
 func Test_Store_RecordDeleteByToken(t *testing.T) {
-	store, err := initStore(":memory:")
+	store, err := initStore()
 	if err != nil {
 		t.Fatalf("Test_Store_RecordDeleteByToken: Expected [err] to be nil received [%v]", err.Error())
 	}
@@ -425,7 +425,7 @@ func Test_Store_RecordDeleteByToken(t *testing.T) {
 }
 
 func Test_Store_RecordSoftDelete(t *testing.T) {
-	store, err := initStore(":memory:")
+	store, err := initStore()
 	if err != nil {
 		t.Fatalf("Test_Store_RecordSoftDelete: Expected [err] to be nil received [%v]", err.Error())
 	}
@@ -504,7 +504,7 @@ func Test_Store_RecordSoftDelete(t *testing.T) {
 }
 
 func Test_Store_RecordSoftDeleteByID(t *testing.T) {
-	store, err := initStore(":memory:")
+	store, err := initStore()
 	if err != nil {
 		t.Fatalf("Test_Store_RecordSoftDeleteByID: Expected [err] to be nil received [%v]", err.Error())
 	}
@@ -576,7 +576,7 @@ func Test_Store_RecordSoftDeleteByID(t *testing.T) {
 }
 
 func Test_Store_RecordSoftDeleteByToken(t *testing.T) {
-	store, err := initStore(":memory:")
+	store, err := initStore()
 	if err != nil {
 		t.Fatalf("Test_Store_RecordSoftDeleteByToken: Expected [err] to be nil received [%v]", err.Error())
 	}

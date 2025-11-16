@@ -9,14 +9,14 @@ import (
 
 // == CLASS ==================================================================
 
-type record struct {
+type recordImplementation struct {
 	dataobject.DataObject
 }
 
 // == CONSTRUCTORS ===========================================================
 
 func NewRecord() RecordInterface {
-	d := (&record{}).
+	d := (&recordImplementation{}).
 		SetID(uid.HumanUid()).
 		SetCreatedAt(carbon.Now(carbon.UTC).ToDateTimeString(carbon.UTC)).
 		SetUpdatedAt(carbon.Now(carbon.UTC).ToDateTimeString(carbon.UTC)).
@@ -26,7 +26,7 @@ func NewRecord() RecordInterface {
 }
 
 func NewRecordFromExistingData(data map[string]string) RecordInterface {
-	o := &record{}
+	o := &recordImplementation{}
 	o.Hydrate(data)
 	return o
 }
@@ -35,56 +35,56 @@ func NewRecordFromExistingData(data map[string]string) RecordInterface {
 
 // == SETTERS AND GETTERS ====================================================
 
-func (v *record) GetCreatedAt() string {
+func (v *recordImplementation) GetCreatedAt() string {
 	return v.Get(COLUMN_CREATED_AT)
 }
 
-func (v *record) SetCreatedAt(createdAt string) RecordInterface {
+func (v *recordImplementation) SetCreatedAt(createdAt string) RecordInterface {
 	v.Set(COLUMN_CREATED_AT, createdAt)
 	return v
 }
 
-func (v *record) GetSoftDeletedAt() string {
+func (v *recordImplementation) GetSoftDeletedAt() string {
 	return v.Get(COLUMN_SOFT_DELETED_AT)
 }
 
-func (v *record) SetSoftDeletedAt(softDeletedAt string) RecordInterface {
+func (v *recordImplementation) SetSoftDeletedAt(softDeletedAt string) RecordInterface {
 	v.Set(COLUMN_SOFT_DELETED_AT, softDeletedAt)
 	return v
 }
 
-func (v *record) GetID() string {
+func (v *recordImplementation) GetID() string {
 	return v.Get(COLUMN_ID)
 }
 
-func (v *record) SetID(id string) RecordInterface {
+func (v *recordImplementation) SetID(id string) RecordInterface {
 	v.Set(COLUMN_ID, id)
 	return v
 }
 
-func (v *record) GetToken() string {
+func (v *recordImplementation) GetToken() string {
 	return v.Get(COLUMN_VAULT_TOKEN)
 }
 
-func (v *record) SetToken(token string) RecordInterface {
+func (v *recordImplementation) SetToken(token string) RecordInterface {
 	v.Set(COLUMN_VAULT_TOKEN, token)
 	return v
 }
 
-func (v *record) GetUpdatedAt() string {
+func (v *recordImplementation) GetUpdatedAt() string {
 	return v.Get(COLUMN_UPDATED_AT)
 }
 
-func (v *record) SetUpdatedAt(updatedAt string) RecordInterface {
+func (v *recordImplementation) SetUpdatedAt(updatedAt string) RecordInterface {
 	v.Set(COLUMN_UPDATED_AT, updatedAt)
 	return v
 }
 
-func (v *record) GetValue() string {
+func (v *recordImplementation) GetValue() string {
 	return v.Get(COLUMN_VAULT_VALUE)
 }
 
-func (v *record) SetValue(value string) RecordInterface {
+func (v *recordImplementation) SetValue(value string) RecordInterface {
 	v.Set(COLUMN_VAULT_VALUE, value)
 	return v
 }

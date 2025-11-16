@@ -10,7 +10,7 @@ import (
 )
 
 // TokenCreate creates a new record and returns the token
-func (st *Store) TokenCreate(ctx context.Context, data string, password string, tokenLength int) (token string, err error) {
+func (st *storeImplementation) TokenCreate(ctx context.Context, data string, password string, tokenLength int) (token string, err error) {
 	token, err = generateToken(tokenLength)
 
 	if err != nil {
@@ -34,7 +34,7 @@ func (st *Store) TokenCreate(ctx context.Context, data string, password string, 
 	return token, nil
 }
 
-func (store *Store) TokenCreateCustom(ctx context.Context, token string, data string, password string) (err error) {
+func (store *storeImplementation) TokenCreateCustom(ctx context.Context, token string, data string, password string) (err error) {
 	encodedData := encode(data, password)
 
 	var newEntry = NewRecord().
@@ -62,7 +62,7 @@ func (store *Store) TokenCreateCustom(ctx context.Context, token string, data st
 //
 // Returns:
 // - err: An error if something went wrong
-func (st *Store) TokenDelete(ctx context.Context, token string) error {
+func (st *storeImplementation) TokenDelete(ctx context.Context, token string) error {
 	if token == "" {
 		return errors.New("token is empty")
 	}
@@ -81,7 +81,7 @@ func (st *Store) TokenDelete(ctx context.Context, token string) error {
 // Returns:
 // - exists: A boolean indicating if the token exists
 // - err: An error if something went wrong
-func (store *Store) TokenExists(ctx context.Context, token string) (bool, error) {
+func (store *storeImplementation) TokenExists(ctx context.Context, token string) (bool, error) {
 	if token == "" {
 		return false, errors.New("token is empty")
 	}
@@ -107,7 +107,7 @@ func (store *Store) TokenExists(ctx context.Context, token string) (bool, error)
 // Returns:
 // - value: The value of the token
 // - err: An error if something went wrong
-func (st *Store) TokenRead(ctx context.Context, token string, password string) (value string, err error) {
+func (st *storeImplementation) TokenRead(ctx context.Context, token string, password string) (value string, err error) {
 	entry, err := st.RecordFindByToken(ctx, token)
 
 	if err != nil {
@@ -140,7 +140,7 @@ func (st *Store) TokenRead(ctx context.Context, token string, password string) (
 //
 // Returns:
 // - err: An error if something went wrong
-func (st *Store) TokenSoftDelete(ctx context.Context, token string) error {
+func (st *storeImplementation) TokenSoftDelete(ctx context.Context, token string) error {
 	if token == "" {
 		return errors.New("token is empty")
 	}
@@ -160,7 +160,7 @@ func (st *Store) TokenSoftDelete(ctx context.Context, token string) error {
 //
 // Returns:
 // - err: An error if something went wrong
-func (st *Store) TokenUpdate(ctx context.Context, token string, value string, password string) (err error) {
+func (st *storeImplementation) TokenUpdate(ctx context.Context, token string, value string, password string) (err error) {
 	entry, errFind := st.RecordFindByToken(ctx, token)
 
 	if errFind != nil {
@@ -190,7 +190,7 @@ func (st *Store) TokenUpdate(ctx context.Context, token string, value string, pa
 // Returns:
 // - values: A map of token to value
 // - err: An error if something went wrong
-func (st *Store) TokensRead(ctx context.Context, tokens []string, password string) (values map[string]string, err error) {
+func (st *storeImplementation) TokensRead(ctx context.Context, tokens []string, password string) (values map[string]string, err error) {
 	values = map[string]string{}
 
 	entries, err := st.RecordList(ctx, RecordQuery().SetTokenIn(tokens))

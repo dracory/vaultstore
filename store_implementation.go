@@ -15,7 +15,7 @@ import (
 )
 
 // Store defines a session store
-type Store struct {
+type storeImplementation struct {
 	vaultTableName     string
 	db                 *sql.DB
 	dbDriverName       string
@@ -24,10 +24,10 @@ type Store struct {
 	logger             *slog.Logger
 }
 
-var _ StoreInterface = (*Store)(nil) // verify it extends the interface
+var _ StoreInterface = (*storeImplementation)(nil) // verify it extends the interface
 
 // AutoMigrate auto migrate
-func (st *Store) AutoMigrate() error {
+func (st *storeImplementation) AutoMigrate() error {
 	sql := st.SqlCreateTable()
 
 	if st.debugEnabled {
@@ -45,22 +45,22 @@ func (st *Store) AutoMigrate() error {
 }
 
 // EnableDebug - enables the debug option
-func (st *Store) EnableDebug(debug bool) {
+func (st *storeImplementation) EnableDebug(debug bool) {
 	st.debugEnabled = debug
 }
 
-func (st *Store) GetDbDriverName() string {
+func (st *storeImplementation) GetDbDriverName() string {
 	return st.dbDriverName
 }
 
-func (st *Store) GetVaultTableName() string {
+func (st *storeImplementation) GetVaultTableName() string {
 	return st.vaultTableName
 }
 
-func (store *Store) toQuerableContext(context context.Context) database.QueryableContext {
+func (st *storeImplementation) toQuerableContext(context context.Context) database.QueryableContext {
 	if database.IsQueryableContext(context) {
 		return context.(database.QueryableContext)
 	}
 
-	return database.Context(context, store.db)
+	return database.Context(context, st.db)
 }
