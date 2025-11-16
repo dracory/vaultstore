@@ -8,7 +8,6 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"fmt"
-	"os"
 	"regexp"
 )
 
@@ -20,13 +19,6 @@ func base64Encode(src []byte) string {
 // base64Decode decodes a base64 encoded string to a byte array
 func base64Decode(src string) ([]byte, error) {
 	return base64.URLEncoding.DecodeString(src)
-}
-
-// fileExists checks if a file exists
-func fileExists(filePath string) bool {
-	_, err := os.Stat(filePath)
-
-	return !os.IsNotExist(err)
 }
 
 // isBase64 checks if a string is a base64 encoded string

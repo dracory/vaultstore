@@ -8,6 +8,7 @@ import (
 
 	"database/sql"
 
+	"github.com/dracory/database"
 	_ "modernc.org/sqlite"
 )
 
@@ -349,9 +350,8 @@ func Test_Store_toQuerableContext(t *testing.T) {
 	ctx := context.Background()
 	qctx := store.toQuerableContext(ctx)
 
-	// Instead of comparing with nil directly, we can check if it's a valid interface
-	var nilTest any = qctx
-	if nilTest == nil {
-		t.Fatal("Expected non-nil QueryableContext")
+	// Verify that the returned context is recognized as a QueryableContext
+	if !database.IsQueryableContext(qctx) {
+		t.Fatal("Expected QueryableContext from toQuerableContext")
 	}
 }
