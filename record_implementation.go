@@ -20,6 +20,7 @@ func NewRecord() RecordInterface {
 		SetID(uid.HumanUid()).
 		SetCreatedAt(carbon.Now(carbon.UTC).ToDateTimeString(carbon.UTC)).
 		SetUpdatedAt(carbon.Now(carbon.UTC).ToDateTimeString(carbon.UTC)).
+		SetExpiresAt(sb.MAX_DATETIME).
 		SetSoftDeletedAt(sb.MAX_DATETIME)
 
 	return d
@@ -41,6 +42,15 @@ func (v *recordImplementation) GetCreatedAt() string {
 
 func (v *recordImplementation) SetCreatedAt(createdAt string) RecordInterface {
 	v.Set(COLUMN_CREATED_AT, createdAt)
+	return v
+}
+
+func (v *recordImplementation) GetExpiresAt() string {
+	return v.Get(COLUMN_EXPIRES_AT)
+}
+
+func (v *recordImplementation) SetExpiresAt(expiresAt string) RecordInterface {
+	v.Set(COLUMN_EXPIRES_AT, expiresAt)
 	return v
 }
 

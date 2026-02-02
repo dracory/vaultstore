@@ -31,6 +31,10 @@ func (store *storeImplementation) SqlCreateTable() string {
 			Type: sb.COLUMN_TYPE_DATETIME,
 		}).
 		Column(sb.Column{
+			Name: COLUMN_EXPIRES_AT,
+			Type: sb.COLUMN_TYPE_DATETIME,
+		}).
+		Column(sb.Column{
 			Name: COLUMN_SOFT_DELETED_AT,
 			Type: sb.COLUMN_TYPE_DATETIME,
 		}).

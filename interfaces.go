@@ -2,6 +2,7 @@ package vaultstore
 
 import (
 	"context"
+	"time"
 
 	"github.com/doug-martin/goqu/v9"
 )
@@ -13,6 +14,7 @@ type RecordInterface interface {
 
 	// Getters
 	GetCreatedAt() string
+	GetExpiresAt() string
 	GetSoftDeletedAt() string
 	GetID() string
 	GetToken() string
@@ -21,6 +23,7 @@ type RecordInterface interface {
 
 	// Setters
 	SetCreatedAt(createdAt string) RecordInterface
+	SetExpiresAt(expiresAt string) RecordInterface
 	SetSoftDeletedAt(softDeletedAt string) RecordInterface
 	SetID(id string) RecordInterface
 	SetToken(token string) RecordInterface
@@ -95,11 +98,14 @@ type StoreInterface interface {
 	RecordSoftDeleteByToken(ctx context.Context, token string) error
 	RecordUpdate(ctx context.Context, record RecordInterface) error
 
-	TokenCreate(ctx context.Context, value string, password string, tokenLength int) (token string, err error)
-	TokenCreateCustom(ctx context.Context, token string, value string, password string) (err error)
+	TokenCreate(ctx context.Context, value string, password string, tokenLength int, options ...TokenCreateOptions) (token string, err error)
+	TokenCreateCustom(ctx context.Context, token string, value string, password string, options ...TokenCreateOptions) (err error)
 	TokenDelete(ctx context.Context, token string) error
 	TokenExists(ctx context.Context, token string) (bool, error)
 	TokenRead(ctx context.Context, token string, password string) (string, error)
+	TokenRenew(ctx context.Context, token string, expiresAt time.Time) error
+	TokensExpiredSoftDelete(ctx context.Context) (count int64, err error)
+	TokensExpiredDelete(ctx context.Context) (count int64, err error)
 	TokenSoftDelete(ctx context.Context, token string) error
 	TokenUpdate(ctx context.Context, token string, value string, password string) error
 	TokensRead(ctx context.Context, tokens []string, password string) (map[string]string, error)

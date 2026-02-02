@@ -4,13 +4,25 @@ import (
 	"context"
 	"errors"
 	"strings"
+	"time"
 
+	"github.com/dracory/sb"
 	"github.com/dromara/carbon/v2"
 	"github.com/samber/lo"
 )
 
+// ErrTokenExpired is returned when a token has expired
+var ErrTokenExpired = errors.New("token has expired")
+
+// TokenCreateOptions contains optional parameters for token creation
+type TokenCreateOptions struct {
+	// ExpiresAt is the expiration time for the token
+	// If zero value, token never expires
+	ExpiresAt time.Time
+}
+
 // TokenCreate creates a new record and returns the token
-func (st *storeImplementation) TokenCreate(ctx context.Context, data string, password string, tokenLength int) (token string, err error) {
+func (st *storeImplementation) TokenCreate(ctx context.Context, data string, password string, tokenLength int, options ...TokenCreateOptions) (token string, err error) {
 	token, err = generateToken(tokenLength)
 
 	if err != nil {
@@ -25,6 +37,11 @@ func (st *storeImplementation) TokenCreate(ctx context.Context, data string, pas
 		SetCreatedAt(carbon.Now(carbon.UTC).ToDateTimeString(carbon.UTC)).
 		SetUpdatedAt(carbon.Now(carbon.UTC).ToDateTimeString(carbon.UTC))
 
+	// Apply options if provided
+	if len(options) > 0 && !options[0].ExpiresAt.IsZero() {
+		newEntry.SetExpiresAt(carbon.CreateFromStdTime(options[0].ExpiresAt).ToDateTimeString(carbon.UTC))
+	}
+
 	err = st.RecordCreate(ctx, newEntry)
 
 	if err != nil {
@@ -34,7 +51,7 @@ func (st *storeImplementation) TokenCreate(ctx context.Context, data string, pas
 	return token, nil
 }
 
-func (store *storeImplementation) TokenCreateCustom(ctx context.Context, token string, data string, password string) (err error) {
+func (store *storeImplementation) TokenCreateCustom(ctx context.Context, token string, data string, password string, options ...TokenCreateOptions) (err error) {
 	encodedData := encode(data, password)
 
 	var newEntry = NewRecord().
@@ -42,6 +59,11 @@ func (store *storeImplementation) TokenCreateCustom(ctx context.Context, token s
 		SetValue(encodedData).
 		SetCreatedAt(carbon.Now(carbon.UTC).ToDateTimeString(carbon.UTC)).
 		SetUpdatedAt(carbon.Now(carbon.UTC).ToDateTimeString(carbon.UTC))
+
+	// Apply options if provided
+	if len(options) > 0 && !options[0].ExpiresAt.IsZero() {
+		newEntry.SetExpiresAt(carbon.CreateFromStdTime(options[0].ExpiresAt).ToDateTimeString(carbon.UTC))
+	}
 
 	err = store.RecordCreate(ctx, newEntry)
 
@@ -118,6 +140,15 @@ func (st *storeImplementation) TokenRead(ctx context.Context, token string, pass
 		return "", errors.New("token does not exist")
 	}
 
+	// Check if token has expired
+	expiresAt := entry.GetExpiresAt()
+	if expiresAt != "" && expiresAt != sb.MAX_DATETIME {
+		expiryTime := carbon.Parse(expiresAt, carbon.UTC)
+		if !expiryTime.IsZero() && carbon.Now(carbon.UTC).Gt(expiryTime) {
+			return "", ErrTokenExpired
+		}
+	}
+
 	decoded, err := decode(entry.GetValue(), password)
 
 	if err != nil {
@@ -125,6 +156,83 @@ func (st *storeImplementation) TokenRead(ctx context.Context, token string, pass
 	}
 
 	return decoded, nil
+}
+
+// TokenRenew extends the expiration time of an existing token
+func (st *storeImplementation) TokenRenew(ctx context.Context, token string, expiresAt time.Time) error {
+	entry, err := st.RecordFindByToken(ctx, token)
+
+	if err != nil {
+		return err
+	}
+
+	if entry == nil {
+		return errors.New("token does not exist")
+	}
+
+	if expiresAt.IsZero() {
+		entry.SetExpiresAt(sb.MAX_DATETIME)
+	} else {
+		entry.SetExpiresAt(carbon.CreateFromStdTime(expiresAt).ToDateTimeString(carbon.UTC))
+	}
+
+	return st.RecordUpdate(ctx, entry)
+}
+
+// TokensExpiredSoftDelete soft-deletes all expired tokens
+func (st *storeImplementation) TokensExpiredSoftDelete(ctx context.Context) (count int64, err error) {
+	records, err := st.RecordList(ctx, RecordQuery())
+	if err != nil {
+		return 0, err
+	}
+
+	for _, record := range records {
+		expiresAt := record.GetExpiresAt()
+		if expiresAt == "" || expiresAt == sb.MAX_DATETIME {
+			continue
+		}
+
+		expiryTime := carbon.Parse(expiresAt, carbon.UTC)
+		if expiryTime.IsZero() || carbon.Now(carbon.UTC).Lte(expiryTime) {
+			continue
+		}
+
+		err = st.RecordSoftDelete(ctx, record)
+		if err != nil {
+			return count, err
+		}
+		count++
+	}
+
+	return count, nil
+}
+
+// TokensExpiredDelete permanently deletes all expired tokens
+func (st *storeImplementation) TokensExpiredDelete(ctx context.Context) (count int64, err error) {
+	records, err := st.RecordList(ctx, RecordQuery())
+	if err != nil {
+		return 0, err
+	}
+
+	for _, record := range records {
+		expiresAt := record.GetExpiresAt()
+		if expiresAt == "" || expiresAt == sb.MAX_DATETIME {
+			continue
+		}
+
+		expiryTime := carbon.Parse(expiresAt, carbon.UTC)
+		if expiryTime.IsZero() || carbon.Now(carbon.UTC).Lte(expiryTime) {
+			continue
+		}
+
+		err = st.RecordDeleteByID(ctx, record.GetID())
+		if err != nil {
+			return count, err
+		}
+		count++
+	}
+
+	return count, nil
 }
 
 // TokenSoftDelete soft deletes a token from the store
@@ -210,6 +318,15 @@ func (st *storeImplementation) TokensRead(ctx context.Context, tokens []string, 
 	}
 
 	for _, entry := range entries {
+		// Check if token has expired
+		expiresAt := entry.GetExpiresAt()
+		if expiresAt != "" && expiresAt != sb.MAX_DATETIME {
+			expiryTime := carbon.Parse(expiresAt, carbon.UTC)
+			if !expiryTime.IsZero() && carbon.Now(carbon.UTC).Gt(expiryTime) {
+				continue // Skip expired tokens
+			}
+		}
+
 		decoded, err := decode(entry.GetValue(), password)
 
 		if err != nil {
