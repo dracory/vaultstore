@@ -43,7 +43,10 @@ func Test_xorEncryptDecryptLargeInput(t *testing.T) {
 func Test_decode(t *testing.T) {
 	test_val := "test_value"
 	test_pass := "test_password"
-	encoded_str := encode(test_val, test_pass)
+	encoded_str, err := encode(test_val, test_pass)
+	if err != nil {
+		t.Fatalf("encode() failed: %v", err)
+	}
 
 	str, err := decode(encoded_str, test_pass)
 	if err != nil {
@@ -57,7 +60,10 @@ func Test_decode(t *testing.T) {
 func Test_encode(t *testing.T) {
 	test_val := "test_value"
 	test_pass := "test_password"
-	encoded_str := encode(test_val, test_pass)
+	encoded_str, err := encode(test_val, test_pass)
+	if err != nil {
+		t.Fatalf("encode() failed: %v", err)
+	}
 
 	str, err := decode(encoded_str, test_pass)
 	if err != nil {

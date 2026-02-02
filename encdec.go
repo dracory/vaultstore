@@ -5,6 +5,7 @@ import (
 	"crypto/cipher"
 	cryptorand "crypto/rand"
 	"errors"
+	"fmt"
 	"io"
 	"math/rand/v2"
 	"strconv"
@@ -111,20 +112,17 @@ func decodeV2(value string, password string) (string, error) {
 	return string(plaintext), nil
 }
 
-func encode(value string, password string) string {
+func encode(value string, password string) (string, error) {
 	// Always use v2 encryption for new data
 	return encodeV2(value, password)
 }
 
 // encodeV2 encrypts using AES-GCM with Argon2id key derivation
-func encodeV2(value string, password string) string {
+func encodeV2(value string, password string) (string, error) {
 	// Generate random salt
 	salt := make([]byte, V2_SALT_SIZE)
 	if _, err := io.ReadFull(cryptorand.Reader, salt); err != nil {
-		// Fall back to insecure random only if crypto/rand fails
-		for i := range salt {
-			salt[i] = byte(rand.IntN(256))
-		}
+		return "", fmt.Errorf("failed to generate salt: %w", err)
 	}
 
 	// Derive key using Argon2id
@@ -133,22 +131,19 @@ func encodeV2(value string, password string) string {
 	// Create AES cipher
 	block, err := aes.NewCipher(key)
 	if err != nil {
-		return ""
+		return "", fmt.Errorf("failed to create cipher: %w", err)
 	}
 
 	// Create GCM
 	gcm, err := cipher.NewGCM(block)
 	if err != nil {
-		return ""
+		return "", fmt.Errorf("failed to create GCM: %w", err)
 	}
 
 	// Generate nonce
 	nonce := make([]byte, gcm.NonceSize())
 	if _, err := io.ReadFull(cryptorand.Reader, nonce); err != nil {
-		// Fall back to insecure random only if crypto/rand fails
-		for i := range nonce {
-			nonce[i] = byte(rand.IntN(256))
-		}
+		return "", fmt.Errorf("failed to generate nonce: %w", err)
 	}
 
 	// Encrypt
@@ -158,7 +153,7 @@ func encodeV2(value string, password string) string {
 	combined := append(salt, ciphertext...)
 
 	// Encode and add prefix
-	return ENCRYPTION_PREFIX_V2 + base64Encode(combined)
+	return ENCRYPTION_PREFIX_V2 + base64Encode(combined), nil
 }
 
 // deriveKeyArgon2id derives a key using Argon2id

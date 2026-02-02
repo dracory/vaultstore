@@ -3,6 +3,7 @@ package vaultstore
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 	"time"
 
@@ -42,7 +43,10 @@ func (store *storeImplementation) TokenCreate(ctx context.Context, data string, 
 			continue // Try again with a new token
 		}
 
-		encodedData := encode(data, password)
+		encodedData, err := encode(data, password)
+		if err != nil {
+			return "", fmt.Errorf("failed to encode data: %w", err)
+		}
 
 		var newEntry = NewRecord().
 			SetToken(token).
@@ -64,6 +68,9 @@ func (store *storeImplementation) TokenCreate(ctx context.Context, data string, 
 		return token, nil
 	}
 
+	if lastErr == nil {
+		return "", errors.New("failed to create unique token after " + string(rune('0'+maxAttempts)) + " attempts")
+	}
 	return "", errors.New("failed to create unique token after " + string(rune('0'+maxAttempts)) + " attempts: " + lastErr.Error())
 }
 
@@ -77,7 +84,10 @@ func (store *storeImplementation) TokenCreateCustom(ctx context.Context, token s
 		return errors.New("token already exists")
 	}
 
-	encodedData := encode(data, password)
+	encodedData, err := encode(data, password)
+	if err != nil {
+		return fmt.Errorf("failed to encode data: %w", err)
+	}
 
 	var newEntry = NewRecord().
 		SetToken(token).
@@ -304,7 +314,10 @@ func (store *storeImplementation) TokenUpdate(ctx context.Context, token string,
 		return errors.New("token does not exist")
 	}
 
-	encodedValue := encode(value, password)
+	encodedValue, err := encode(value, password)
+	if err != nil {
+		return fmt.Errorf("failed to encode value: %w", err)
+	}
 
 	entry.SetValue(encodedValue)
 

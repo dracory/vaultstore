@@ -38,7 +38,10 @@ func Test_encodeV2_decodeV2_Roundtrip(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			encoded := encodeV2(tc.value, tc.password)
+			encoded, err := encodeV2(tc.value, tc.password)
+			if err != nil {
+				t.Fatalf("encodeV2 failed: %v", err)
+			}
 			if !strings.HasPrefix(encoded, ENCRYPTION_PREFIX_V2) {
 				t.Fatalf("Expected v2: prefix, got: %s", encoded[:10])
 			}
@@ -61,8 +64,11 @@ func Test_decodeV2_WrongPassword(t *testing.T) {
 	password := "correct_password"
 	wrongPassword := "wrong_password"
 
-	encoded := encodeV2(value, password)
-	_, err := decodeV2(encoded, wrongPassword)
+	encoded, err := encodeV2(value, password)
+	if err != nil {
+		t.Fatalf("encodeV2 failed: %v", err)
+	}
+	_, err = decodeV2(encoded, wrongPassword)
 	if err == nil {
 		t.Fatal("Expected error with wrong password, got nil")
 	}
@@ -73,11 +79,14 @@ func Test_decodeV2_TamperedCiphertext(t *testing.T) {
 	value := "secret data"
 	password := "password"
 
-	encoded := encodeV2(value, password)
+	encoded, err := encodeV2(value, password)
+	if err != nil {
+		t.Fatalf("encodeV2 failed: %v", err)
+	}
 	// Tamper with the ciphertext by changing a character
 	tampered := encoded[:len(encoded)-5] + "XXXXX"
 
-	_, err := decodeV2(tampered, password)
+	_, err = decodeV2(tampered, password)
 	if err == nil {
 		t.Fatal("Expected error with tampered ciphertext, got nil")
 	}
@@ -88,7 +97,10 @@ func Test_encodeV2_decodeV2_EmptyPassword(t *testing.T) {
 	value := "test data"
 	password := ""
 
-	encoded := encodeV2(value, password)
+	encoded, err := encodeV2(value, password)
+	if err != nil {
+		t.Fatalf("encodeV2 failed: %v", err)
+	}
 	decoded, err := decodeV2(encoded, password)
 	if err != nil {
 		t.Fatalf("decodeV2 with empty password failed: %v", err)
@@ -103,7 +115,10 @@ func Test_encode_UsesV2(t *testing.T) {
 	value := "test_value"
 	password := "test_password"
 
-	encoded := encode(value, password)
+	encoded, err := encode(value, password)
+	if err != nil {
+		t.Fatalf("encode() failed: %v", err)
+	}
 	if !strings.HasPrefix(encoded, ENCRYPTION_PREFIX_V2) {
 		t.Fatalf("encode() should use v2 prefix, got: %s", encoded[:10])
 	}
@@ -114,7 +129,10 @@ func Test_decode_HandlesV2(t *testing.T) {
 	value := "test_value"
 	password := "test_password"
 
-	encoded := encodeV2(value, password)
+	encoded, err := encodeV2(value, password)
+	if err != nil {
+		t.Fatalf("encodeV2 failed: %v", err)
+	}
 	decoded, err := decode(encoded, password)
 	if err != nil {
 		t.Fatalf("decode() failed for v2: %v", err)
@@ -197,8 +215,14 @@ func Test_encodeV2_UniqueOutput(t *testing.T) {
 	value := "same_value"
 	password := "same_password"
 
-	encoded1 := encodeV2(value, password)
-	encoded2 := encodeV2(value, password)
+	encoded1, err := encodeV2(value, password)
+	if err != nil {
+		t.Fatalf("encodeV2 failed: %v", err)
+	}
+	encoded2, err := encodeV2(value, password)
+	if err != nil {
+		t.Fatalf("encodeV2 failed: %v", err)
+	}
 
 	if encoded1 == encoded2 {
 		t.Fatal("encodeV2 should produce unique output each time due to random salt")

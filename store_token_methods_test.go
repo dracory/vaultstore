@@ -522,6 +522,10 @@ func Test_Store_TokenRenew(t *testing.T) {
 		t.Fatal("Failed to find record after renew: ", err.Error())
 	}
 
+	if record == nil {
+		t.Fatal("Record should not be nil after renew")
+	}
+
 	if record.GetExpiresAt() == "" {
 		t.Fatal("ExpiresAt should not be empty after renew")
 	}
