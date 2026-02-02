@@ -1,6 +1,6 @@
 # API and Integration Improvements
 
-## Status: Rejected (Beyond Scope)
+## Status: Rejected (Beyond Scope, VaultStore is a storage component, not a full API system)
 
 ## Overview
 

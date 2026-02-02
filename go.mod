@@ -9,8 +9,10 @@ require (
 	github.com/dracory/sb v0.12.0
 	github.com/dracory/uid v1.8.0
 	github.com/dromara/carbon/v2 v2.6.15
+	github.com/glebarez/sqlite v1.11.0
 	github.com/samber/lo v1.52.0
-	modernc.org/sqlite v1.40.0
+	golang.org/x/crypto v0.43.0
+	gorm.io/gorm v1.25.12
 )
 
 require (
@@ -22,7 +24,10 @@ require (
 
 require (
 	github.com/dustin/go-humanize v1.0.1 // indirect
+	github.com/glebarez/go-sqlite v1.21.2 // indirect
 	github.com/google/uuid v1.6.0 // indirect
+	github.com/jinzhu/inflection v1.0.0 // indirect
+	github.com/jinzhu/now v1.1.5 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/ncruces/go-strftime v1.0.0 // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
@@ -31,4 +36,5 @@ require (
 	modernc.org/libc v1.67.0 // indirect
 	modernc.org/mathutil v1.7.1 // indirect
 	modernc.org/memory v1.11.0 // indirect
+	modernc.org/sqlite v1.40.0 // indirect
 )

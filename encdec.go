@@ -1,13 +1,30 @@
 package vaultstore
 
 import (
+	"crypto/aes"
+	"crypto/cipher"
+	cryptorand "crypto/rand"
 	"errors"
+	"io"
 	"math/rand/v2"
 	"strconv"
 	"strings"
+
+	"golang.org/x/crypto/argon2"
 )
 
 func decode(value string, password string) (string, error) {
+	// Check for v2 encryption prefix (AES-GCM)
+	if strings.HasPrefix(value, ENCRYPTION_PREFIX_V2) {
+		return decodeV2(value, password)
+	}
+
+	// Legacy v1 decryption (XOR-based)
+	return decodeV1(value, password)
+}
+
+// decodeV1 handles legacy XOR-based decryption
+func decodeV1(value string, password string) (string, error) {
 	strongPassword := strongifyPassword(password)
 	first, err := xorDecrypt(value, strongPassword)
 
@@ -16,7 +33,7 @@ func decode(value string, password string) (string, error) {
 	}
 
 	if !isBase64(first) {
-		return "", errors.New("vault password incorrect")
+		return "", errors.New("decryption failed")
 	}
 
 	v4, err := base64Decode(first)
@@ -28,7 +45,7 @@ func decode(value string, password string) (string, error) {
 	parts := strings.Split(string(v4), "_")
 
 	if len(parts) < 2 {
-		return "", errors.New("vault password incorrect")
+		return "", errors.New("decryption failed")
 	}
 
 	upTo, err := strconv.Atoi(parts[0])
@@ -49,15 +66,108 @@ func decode(value string, password string) (string, error) {
 	return string(v2), nil
 }
 
+// decodeV2 handles AES-GCM decryption with Argon2id key derivation
+func decodeV2(value string, password string) (string, error) {
+	// Remove the v2: prefix
+	encodedData := strings.TrimPrefix(value, ENCRYPTION_PREFIX_V2)
+
+	// Decode base64
+	data, err := base64Decode(encodedData)
+	if err != nil {
+		return "", errors.New("base64 decode: " + err.Error())
+	}
+
+	// Check minimum length (salt + nonce + tag)
+	if len(data) < V2_SALT_SIZE+V2_NONCE_SIZE+V2_TAG_SIZE {
+		return "", errors.New("invalid ciphertext length")
+	}
+
+	// Extract salt, nonce, and ciphertext
+	salt := data[:V2_SALT_SIZE]
+	nonce := data[V2_SALT_SIZE : V2_SALT_SIZE+V2_NONCE_SIZE]
+	ciphertext := data[V2_SALT_SIZE+V2_NONCE_SIZE:]
+
+	// Derive key using Argon2id
+	key := deriveKeyArgon2id(password, salt)
+
+	// Create AES cipher
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		return "", errors.New("aes cipher: " + err.Error())
+	}
+
+	// Create GCM
+	gcm, err := cipher.NewGCM(block)
+	if err != nil {
+		return "", errors.New("gcm: " + err.Error())
+	}
+
+	// Decrypt
+	plaintext, err := gcm.Open(nil, nonce, ciphertext, nil)
+	if err != nil {
+		return "", errors.New("decryption failed: " + err.Error())
+	}
+
+	return string(plaintext), nil
+}
+
 func encode(value string, password string) string {
-	strongPassword := strongifyPassword(password)
-	v1 := base64Encode([]byte(value))
-	v2 := strconv.Itoa(len(v1)) + "_" + v1
-	randomBlock := createRandomBlock(calculateRequiredBlockLength(len(v2)))
-	v3 := v2 + "" + randomBlock[len(v2):]
-	v4 := base64Encode([]byte(v3))
-	last := xorEncrypt(v4, strongPassword)
-	return last
+	// Always use v2 encryption for new data
+	return encodeV2(value, password)
+}
+
+// encodeV2 encrypts using AES-GCM with Argon2id key derivation
+func encodeV2(value string, password string) string {
+	// Generate random salt
+	salt := make([]byte, V2_SALT_SIZE)
+	if _, err := io.ReadFull(cryptorand.Reader, salt); err != nil {
+		// Fall back to insecure random only if crypto/rand fails
+		for i := range salt {
+			salt[i] = byte(rand.IntN(256))
+		}
+	}
+
+	// Derive key using Argon2id
+	key := deriveKeyArgon2id(password, salt)
+
+	// Create AES cipher
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		return ""
+	}
+
+	// Create GCM
+	gcm, err := cipher.NewGCM(block)
+	if err != nil {
+		return ""
+	}
+
+	// Generate nonce
+	nonce := make([]byte, gcm.NonceSize())
+	if _, err := io.ReadFull(cryptorand.Reader, nonce); err != nil {
+		// Fall back to insecure random only if crypto/rand fails
+		for i := range nonce {
+			nonce[i] = byte(rand.IntN(256))
+		}
+	}
+
+	// Encrypt
+	ciphertext := gcm.Seal(nonce, nonce, []byte(value), nil)
+
+	// Combine salt + ciphertext (which includes nonce + tag)
+	combined := append(salt, ciphertext...)
+
+	// Encode and add prefix
+	return ENCRYPTION_PREFIX_V2 + base64Encode(combined)
+}
+
+// deriveKeyArgon2id derives a key using Argon2id
+func deriveKeyArgon2id(password string, salt []byte) []byte {
+	return argon2.IDKey([]byte(password), salt,
+		ARGON2_ITERATIONS,
+		ARGON2_MEMORY,
+		ARGON2_PARALLELISM,
+		ARGON2_KEY_LENGTH)
 }
 
 // strongifyPassword Performs multiple calculations

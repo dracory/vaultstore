@@ -1,6 +1,6 @@
 # Access Control and Permissions
 
-## Status: Rejected (Beyond Scope)
+## Status: Rejected (Beyond Scope, VaultStore is a storage component, not a full secrets-management system)
 
 ## Overview
 

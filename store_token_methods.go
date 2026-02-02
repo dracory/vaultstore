@@ -22,36 +22,61 @@ type TokenCreateOptions struct {
 }
 
 // TokenCreate creates a new record and returns the token
-func (st *storeImplementation) TokenCreate(ctx context.Context, data string, password string, tokenLength int, options ...TokenCreateOptions) (token string, err error) {
-	token, err = generateToken(tokenLength)
+func (store *storeImplementation) TokenCreate(ctx context.Context, data string, password string, tokenLength int, options ...TokenCreateOptions) (token string, err error) {
+	maxAttempts := 3
+	var lastErr error
 
-	if err != nil {
-		return "", err
+	for attempt := 0; attempt < maxAttempts; attempt++ {
+		token, err = generateToken(tokenLength)
+		if err != nil {
+			return "", err
+		}
+
+		// Check if token already exists
+		existing, err := store.RecordFindByToken(ctx, token)
+		if err != nil {
+			return "", err
+		}
+		if existing != nil {
+			lastErr = errors.New("token collision detected")
+			continue // Try again with a new token
+		}
+
+		encodedData := encode(data, password)
+
+		var newEntry = NewRecord().
+			SetToken(token).
+			SetValue(encodedData).
+			SetCreatedAt(carbon.Now(carbon.UTC).ToDateTimeString(carbon.UTC)).
+			SetUpdatedAt(carbon.Now(carbon.UTC).ToDateTimeString(carbon.UTC))
+
+		// Apply options if provided
+		if len(options) > 0 && !options[0].ExpiresAt.IsZero() {
+			newEntry.SetExpiresAt(carbon.CreateFromStdTime(options[0].ExpiresAt).ToDateTimeString(carbon.UTC))
+		}
+
+		err = store.RecordCreate(ctx, newEntry)
+		if err != nil {
+			lastErr = err
+			continue // Try again
+		}
+
+		return token, nil
 	}
 
-	encodedData := encode(data, password)
-
-	var newEntry = NewRecord().
-		SetToken(token).
-		SetValue(encodedData).
-		SetCreatedAt(carbon.Now(carbon.UTC).ToDateTimeString(carbon.UTC)).
-		SetUpdatedAt(carbon.Now(carbon.UTC).ToDateTimeString(carbon.UTC))
-
-	// Apply options if provided
-	if len(options) > 0 && !options[0].ExpiresAt.IsZero() {
-		newEntry.SetExpiresAt(carbon.CreateFromStdTime(options[0].ExpiresAt).ToDateTimeString(carbon.UTC))
-	}
-
-	err = st.RecordCreate(ctx, newEntry)
-
-	if err != nil {
-		return "", err
-	}
-
-	return token, nil
+	return "", errors.New("failed to create unique token after " + string(rune('0'+maxAttempts)) + " attempts: " + lastErr.Error())
 }
 
 func (store *storeImplementation) TokenCreateCustom(ctx context.Context, token string, data string, password string, options ...TokenCreateOptions) (err error) {
+	// Check if token already exists
+	existing, err := store.RecordFindByToken(ctx, token)
+	if err != nil {
+		return err
+	}
+	if existing != nil {
+		return errors.New("token already exists")
+	}
+
 	encodedData := encode(data, password)
 
 	var newEntry = NewRecord().
@@ -84,12 +109,12 @@ func (store *storeImplementation) TokenCreateCustom(ctx context.Context, token s
 //
 // Returns:
 // - err: An error if something went wrong
-func (st *storeImplementation) TokenDelete(ctx context.Context, token string) error {
+func (store *storeImplementation) TokenDelete(ctx context.Context, token string) error {
 	if token == "" {
 		return errors.New("token is empty")
 	}
 
-	return st.RecordDeleteByToken(ctx, token)
+	return store.RecordDeleteByToken(ctx, token)
 }
 
 // TokenExists checks if a token exists
@@ -129,8 +154,8 @@ func (store *storeImplementation) TokenExists(ctx context.Context, token string)
 // Returns:
 // - value: The value of the token
 // - err: An error if something went wrong
-func (st *storeImplementation) TokenRead(ctx context.Context, token string, password string) (value string, err error) {
-	entry, err := st.RecordFindByToken(ctx, token)
+func (store *storeImplementation) TokenRead(ctx context.Context, token string, password string) (value string, err error) {
+	entry, err := store.RecordFindByToken(ctx, token)
 
 	if err != nil {
 		return "", err
@@ -159,8 +184,8 @@ func (st *storeImplementation) TokenRead(ctx context.Context, token string, pass
 }
 
 // TokenRenew extends the expiration time of an existing token
-func (st *storeImplementation) TokenRenew(ctx context.Context, token string, expiresAt time.Time) error {
-	entry, err := st.RecordFindByToken(ctx, token)
+func (store *storeImplementation) TokenRenew(ctx context.Context, token string, expiresAt time.Time) error {
+	entry, err := store.RecordFindByToken(ctx, token)
 
 	if err != nil {
 		return err
@@ -176,12 +201,12 @@ func (st *storeImplementation) TokenRenew(ctx context.Context, token string, exp
 		entry.SetExpiresAt(carbon.CreateFromStdTime(expiresAt).ToDateTimeString(carbon.UTC))
 	}
 
-	return st.RecordUpdate(ctx, entry)
+	return store.RecordUpdate(ctx, entry)
 }
 
 // TokensExpiredSoftDelete soft-deletes all expired tokens
-func (st *storeImplementation) TokensExpiredSoftDelete(ctx context.Context) (count int64, err error) {
-	records, err := st.RecordList(ctx, RecordQuery())
+func (store *storeImplementation) TokensExpiredSoftDelete(ctx context.Context) (count int64, err error) {
+	records, err := store.RecordList(ctx, RecordQuery())
 	if err != nil {
 		return 0, err
 	}
@@ -197,7 +222,7 @@ func (st *storeImplementation) TokensExpiredSoftDelete(ctx context.Context) (cou
 			continue
 		}
 
-		err = st.RecordSoftDelete(ctx, record)
+		err = store.RecordSoftDelete(ctx, record)
 		if err != nil {
 			return count, err
 		}
@@ -208,8 +233,8 @@ func (st *storeImplementation) TokensExpiredSoftDelete(ctx context.Context) (cou
 }
 
 // TokensExpiredDelete permanently deletes all expired tokens
-func (st *storeImplementation) TokensExpiredDelete(ctx context.Context) (count int64, err error) {
-	records, err := st.RecordList(ctx, RecordQuery())
+func (store *storeImplementation) TokensExpiredDelete(ctx context.Context) (count int64, err error) {
+	records, err := store.RecordList(ctx, RecordQuery())
 	if err != nil {
 		return 0, err
 	}
@@ -225,7 +250,7 @@ func (st *storeImplementation) TokensExpiredDelete(ctx context.Context) (count i
 			continue
 		}
 
-		err = st.RecordDeleteByID(ctx, record.GetID())
+		err = store.RecordDeleteByID(ctx, record.GetID())
 		if err != nil {
 			return count, err
 		}
@@ -248,12 +273,12 @@ func (st *storeImplementation) TokensExpiredDelete(ctx context.Context) (count i
 //
 // Returns:
 // - err: An error if something went wrong
-func (st *storeImplementation) TokenSoftDelete(ctx context.Context, token string) error {
+func (store *storeImplementation) TokenSoftDelete(ctx context.Context, token string) error {
 	if token == "" {
 		return errors.New("token is empty")
 	}
 
-	return st.RecordSoftDeleteByToken(ctx, token)
+	return store.RecordSoftDeleteByToken(ctx, token)
 }
 
 // TokenUpdate updates the value of a token
@@ -268,8 +293,8 @@ func (st *storeImplementation) TokenSoftDelete(ctx context.Context, token string
 //
 // Returns:
 // - err: An error if something went wrong
-func (st *storeImplementation) TokenUpdate(ctx context.Context, token string, value string, password string) (err error) {
-	entry, errFind := st.RecordFindByToken(ctx, token)
+func (store *storeImplementation) TokenUpdate(ctx context.Context, token string, value string, password string) (err error) {
+	entry, errFind := store.RecordFindByToken(ctx, token)
 
 	if errFind != nil {
 		return err
@@ -283,7 +308,7 @@ func (st *storeImplementation) TokenUpdate(ctx context.Context, token string, va
 
 	entry.SetValue(encodedValue)
 
-	return st.RecordUpdate(ctx, entry)
+	return store.RecordUpdate(ctx, entry)
 }
 
 // TokensRead reads a list of tokens, returns a map of token to value
@@ -298,10 +323,10 @@ func (st *storeImplementation) TokenUpdate(ctx context.Context, token string, va
 // Returns:
 // - values: A map of token to value
 // - err: An error if something went wrong
-func (st *storeImplementation) TokensRead(ctx context.Context, tokens []string, password string) (values map[string]string, err error) {
+func (store *storeImplementation) TokensRead(ctx context.Context, tokens []string, password string) (values map[string]string, err error) {
 	values = map[string]string{}
 
-	entries, err := st.RecordList(ctx, RecordQuery().SetTokenIn(tokens))
+	entries, err := store.RecordList(ctx, RecordQuery().SetTokenIn(tokens))
 
 	if err != nil {
 		return values, err
@@ -330,7 +355,7 @@ func (st *storeImplementation) TokensRead(ctx context.Context, tokens []string, 
 		decoded, err := decode(entry.GetValue(), password)
 
 		if err != nil {
-			return map[string]string{}, errors.New("decode error for token: " + entry.GetToken() + " : " + err.Error())
+			return map[string]string{}, errors.New("decryption failed for one or more tokens")
 		}
 
 		values[entry.GetToken()] = decoded

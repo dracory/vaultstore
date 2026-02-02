@@ -9,7 +9,6 @@ import (
 	"database/sql"
 
 	"github.com/dracory/database"
-	_ "modernc.org/sqlite"
 )
 
 func initDB() (*sql.DB, error) {

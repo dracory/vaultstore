@@ -47,22 +47,33 @@ func generateToken(tokenLength int) (string, error) {
 // randomFromGamma generates random string of specified length with the characters specified in the gamma string
 func randomFromGamma(length int, gamma string) string {
 	inRune := []rune(gamma)
-	out := ""
+	out := make([]rune, length)
+	gammaLen := len(inRune)
 
-	for i := 0; i < length+20; i++ {
+	// Calculate max value for unbiased rejection sampling
+	// We need: max % gammaLen == gammaLen - 1 for unbiased distribution
+	// So max should be the largest multiple of gammaLen that fits in a byte
+	maxValid := 256 - (256 % gammaLen)
+
+	for i := 0; i < length; {
 		// Generate a random byte
 		var b [1]byte
 		if _, err := rand.Read(b[:]); err != nil {
 			continue
 		}
 
-		// Map the byte to an index in the gamma string
-		randomIndex := int(b[0]) % len(inRune)
-		pick := inRune[randomIndex]
-		out += string(pick)
+		// Rejection sampling: skip values that would cause bias
+		if int(b[0]) >= maxValid {
+			continue
+		}
+
+		// Now modulo will be unbiased
+		randomIndex := int(b[0]) % gammaLen
+		out[i] = inRune[randomIndex]
+		i++
 	}
 
-	return out[:length]
+	return string(out)
 }
 
 // strToMD5Hash generates an MD5 hash of the input string

@@ -37,6 +37,7 @@ type RecordQueryInterface interface {
 
 	GetColumns() []string
 	SetColumns(columns []string) RecordQueryInterface
+	IsColumnsSet() bool
 
 	IsIDSet() bool
 	GetID() string

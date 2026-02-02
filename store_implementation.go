@@ -2,7 +2,6 @@ package vaultstore
 
 import (
 	"context"
-	"log"
 
 	"database/sql"
 
@@ -11,12 +10,14 @@ import (
 	_ "github.com/doug-martin/goqu/v9/dialect/sqlite3"
 	_ "github.com/doug-martin/goqu/v9/dialect/sqlserver"
 	"github.com/dracory/database"
+	"gorm.io/gorm"
 )
 
 // Store defines a session store
 type storeImplementation struct {
 	vaultTableName     string
 	db                 *sql.DB
+	gormDB             *gorm.DB
 	dbDriverName       string
 	automigrateEnabled bool
 	debugEnabled       bool
@@ -25,40 +26,28 @@ type storeImplementation struct {
 var _ StoreInterface = (*storeImplementation)(nil) // verify it extends the interface
 
 // AutoMigrate auto migrate
-func (st *storeImplementation) AutoMigrate() error {
-	sql := st.SqlCreateTable()
-
-	if st.debugEnabled {
-		log.Println(sql)
-	}
-
-	_, err := st.db.Exec(sql)
-
-	if err != nil {
-		log.Println(err)
-		return err
-	}
-
-	return nil
+func (store *storeImplementation) AutoMigrate() error {
+	// Use GORM's AutoMigrate with dynamic table name
+	return store.gormDB.Table(store.vaultTableName).AutoMigrate(&gormVaultRecord{})
 }
 
 // EnableDebug - enables the debug option
-func (st *storeImplementation) EnableDebug(debug bool) {
-	st.debugEnabled = debug
+func (store *storeImplementation) EnableDebug(debug bool) {
+	store.debugEnabled = debug
 }
 
-func (st *storeImplementation) GetDbDriverName() string {
-	return st.dbDriverName
+func (store *storeImplementation) GetDbDriverName() string {
+	return store.dbDriverName
 }
 
-func (st *storeImplementation) GetVaultTableName() string {
-	return st.vaultTableName
+func (store *storeImplementation) GetVaultTableName() string {
+	return store.vaultTableName
 }
 
-func (st *storeImplementation) toQuerableContext(context context.Context) database.QueryableContext {
+func (store *storeImplementation) toQuerableContext(context context.Context) database.QueryableContext {
 	if database.IsQueryableContext(context) {
 		return context.(database.QueryableContext)
 	}
 
-	return database.Context(context, st.db)
+	return database.Context(context, store.db)
 }
