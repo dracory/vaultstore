@@ -46,8 +46,18 @@ const PASSWORD_ID_PREFIX = "p_"
 // Record ID prefix (used in meta table)
 const RECORD_META_ID_PREFIX = "r_"
 
-// bcrypt cost for password hashing
+// bcrypt cost for password hashing (legacy - used for backward compatibility)
 const BCRYPT_COST = 12
+
+// Argon2id password hashing parameters (lightweight defaults for broad compatibility)
+// Users can increase these via CryptoConfig for higher security requirements
+const (
+	ARGON2ID_TIME     = 1         // Minimal passes for faster verification
+	ARGON2ID_MEMORY   = 16 * 1024 // 16MB - lightweight for embedded/mobile
+	ARGON2ID_THREADS  = 2         // Reduced parallelism
+	ARGON2ID_KEY_LEN  = 32        // Hash output length
+	ARGON2ID_SALT_LEN = 16        // Salt length
+)
 
 // Vault settings constants
 const (
