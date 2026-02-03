@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>VaultStore Documentation</title>
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="//cdn.jsdelivr.net/npm/docsify@4/lib/themes/dark.css">
+</head>
+<body>
+  <div id="app"></div>
+  <script>
+    window.$docsify = {
+      name: 'VaultStore',
+      repo: 'https://github.com/dracory/vaultstore',
+      loadSidebar: true,
+      auto2top: true,
+      search: 'auto',
+      plugins: [
+        function(hook, vm) {
+          hook.doneEach(function() {
+            // Initialize Mermaid diagrams after each page render
+            if (window.mermaid) {
+              // Find all mermaid code blocks - Docsify uses different selectors
+              const codeBlocks = document.querySelectorAll('pre[data-lang="mermaid"] code, pre.mermaid code, code.lang-mermaid');
+              console.log('Found mermaid code blocks:', codeBlocks.length);
+              
+              codeBlocks.forEach(async (block, index) => {
+                const graphDefinition = block.textContent.trim();
+                console.log('Processing mermaid block:', graphDefinition.substring(0, 50) + '...');
+                
+                try {
+                  // Create a unique ID for the diagram
+                  const diagramId = 'mermaid-diagram-' + index;
+                  
+                  // Render the diagram using Mermaid v11 API
+                  const { svg } = await mermaid.render(diagramId, graphDefinition);
+                  
+                  // Create a container div and replace the code block
+                  const container = document.createElement('div');
+                  container.innerHTML = svg;
+                  container.className = 'mermaid';
+                  container.style.margin = '20px 0';
+                  
+                  // Find the pre element and replace it with the rendered diagram
+                  const preElement = block.closest('pre');
+                  if (preElement) {
+                    preElement.parentNode.replaceChild(container, preElement);
+                  } else {
+                    block.parentNode.replaceChild(container, block);
+                  }
+                } catch (error) {
+                  console.error('Error rendering Mermaid diagram:', error);
+                  // Keep the original code block if rendering fails
+                  const preElement = block.closest('pre');
+                  if (preElement) {
+                    preElement.style.border = '1px solid #ff6b6b';
+                    preElement.title = 'Mermaid rendering error: ' + error.message;
+                  } else {
+                    block.style.border = '1px solid #ff6b6b';
+                    block.title = 'Mermaid rendering error: ' + error.message;
+                  }
+                }
+              });
+            }
+          });
+        }
+      ]
+    }
+  </script>
+  <script src="//cdn.jsdelivr.net/npm/docsify@4"></script>
+  <script src="//cdn.jsdelivr.net/npm/docsify/lib/plugins/search.min.js"></script>
+  <script src="//cdn.jsdelivr.net/npm/mermaid@11.12.2/dist/mermaid.min.js"></script>
+  <script>
+    // Configure Mermaid for dark theme
+    mermaid.initialize({
+      theme: 'dark',
+      themeVariables: {
+        primaryColor: '#42b983',
+        primaryTextColor: '#fff',
+        primaryBorderColor: '#42b983',
+        lineColor: '#42b983',
+        secondaryColor: '#f3f4f6',
+        tertiaryColor: '#f3f4f6',
+        background: '#1e1e1e',
+        mainBkg: '#282828',
+        secondBkg: '#363636',
+        tertiaryColor: '#444444'
+      }
+    });
+  </script>
+</body>
+</html>
