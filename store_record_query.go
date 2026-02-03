@@ -3,10 +3,11 @@ package vaultstore
 import (
 	"errors"
 	"strings"
+)
 
-	"github.com/doug-martin/goqu/v9"
-	"github.com/dracory/sb"
-	"github.com/dromara/carbon/v2"
+const (
+	ASC  = "asc"
+	DESC = "desc"
 )
 
 // ============================================================================//
@@ -56,7 +57,7 @@ func (q *recordQueryImpl) Validate() error {
 	if q.IsOffsetSet() && q.GetOffset() < 0 {
 		return errors.New("offset cannot be negative")
 	}
-	if q.IsSortOrderSet() && !strings.EqualFold(q.GetSortOrder(), sb.ASC) && !strings.EqualFold(q.GetSortOrder(), sb.DESC) {
+	if q.IsSortOrderSet() && !strings.EqualFold(q.GetSortOrder(), ASC) && !strings.EqualFold(q.GetSortOrder(), DESC) {
 		return errors.New("sortOrder must be 'asc' or 'desc'")
 	}
 
@@ -64,77 +65,6 @@ func (q *recordQueryImpl) Validate() error {
 		return errors.New("countOnly cannot be used with limit or offset")
 	}
 	return nil
-}
-
-func (rq *recordQueryImpl) toSelectDataset(store StoreInterface) (selectDataset *goqu.SelectDataset, selectColumns []any, err error) {
-	if store == nil {
-		return nil, []any{}, errors.New("store is nil")
-	}
-
-	if err := rq.Validate(); err != nil {
-		return nil, []any{}, err
-	}
-
-	q := goqu.Dialect(store.GetDbDriverName()).From(store.GetVaultTableName())
-
-	if rq.IsIDSet() && rq.GetID() != "" {
-		q = q.Where(goqu.C(COLUMN_ID).Eq(rq.GetID()))
-	}
-
-	if rq.IsTokenSet() && rq.GetToken() != "" {
-		q = q.Where(goqu.C(COLUMN_VAULT_TOKEN).Eq(rq.GetToken()))
-	}
-
-	if rq.IsIDInSet() && len(rq.GetIDIn()) > 0 {
-		q = q.Where(goqu.C(COLUMN_ID).In(rq.GetIDIn()))
-	}
-
-	if rq.IsTokenInSet() && len(rq.GetTokenIn()) > 0 {
-		q = q.Where(goqu.C(COLUMN_VAULT_TOKEN).In(rq.GetTokenIn()))
-	}
-
-	if !rq.IsCountOnlySet() {
-		if rq.IsLimitSet() && rq.GetLimit() > 0 {
-			q = q.Limit(uint(rq.GetLimit()))
-		}
-
-		if rq.IsOffsetSet() && rq.GetOffset() > 0 {
-			q = q.Offset(uint(rq.GetOffset()))
-		}
-	}
-
-	sortOrder := sb.DESC
-	if rq.IsSortOrderSet() && rq.GetSortOrder() != "" {
-		sortOrder = rq.GetSortOrder()
-	}
-
-	if rq.IsOrderBySet() && rq.GetOrderBy() != "" {
-		if strings.EqualFold(sortOrder, sb.ASC) {
-			q = q.Order(goqu.I(rq.GetOrderBy()).Asc())
-		} else {
-			q = q.Order(goqu.I(rq.GetOrderBy()).Desc())
-		}
-	}
-
-	columns := []any{}
-
-	for _, column := range rq.GetColumns() {
-		columns = append(columns, column)
-	}
-
-	if rq.IsSoftDeletedIncludeSet() {
-		// soft deleted requested specifically
-		return q, columns, nil
-	}
-
-	// To exclude soft-deleted records, we need to find records where:
-	// soft_deleted_at is greater than current time (not soft-deleted)
-	// When a record is soft-deleted, soft_deleted_at is set to the current time
-	// By default, soft_deleted_at is set to MAX_DATETIME (not soft-deleted)
-	softDeletedFilter := goqu.C(COLUMN_SOFT_DELETED_AT).
-		Gt(carbon.Now(carbon.UTC).ToDateTimeString())
-
-	return q.Where(softDeletedFilter), columns, nil
 }
 
 func (q *recordQueryImpl) IsColumnsSet() bool {

@@ -3,8 +3,6 @@ package vaultstore
 import (
 	"context"
 	"time"
-
-	"github.com/doug-martin/goqu/v9"
 )
 
 // RecordInterface defines the methods that a Record must implement
@@ -33,7 +31,6 @@ type RecordInterface interface {
 
 type RecordQueryInterface interface {
 	Validate() error
-	toSelectDataset(store StoreInterface) (selectDataset *goqu.SelectDataset, columns []any, err error)
 
 	GetColumns() []string
 	SetColumns(columns []string) RecordQueryInterface

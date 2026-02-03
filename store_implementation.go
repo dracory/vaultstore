@@ -5,10 +5,6 @@ import (
 
 	"database/sql"
 
-	_ "github.com/doug-martin/goqu/v9/dialect/mysql"
-	_ "github.com/doug-martin/goqu/v9/dialect/postgres"
-	_ "github.com/doug-martin/goqu/v9/dialect/sqlite3"
-	_ "github.com/doug-martin/goqu/v9/dialect/sqlserver"
 	"github.com/dracory/database"
 	"gorm.io/gorm"
 )

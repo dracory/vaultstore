@@ -3,7 +3,6 @@ module github.com/dracory/vaultstore
 go 1.25
 
 require (
-	github.com/doug-martin/goqu/v9 v9.19.0
 	github.com/dracory/database v0.5.0
 	github.com/dracory/dataobject v1.6.0
 	github.com/dracory/sb v0.12.0
@@ -17,7 +16,6 @@ require (
 
 require (
 	github.com/georgysavva/scany v1.2.3 // indirect
-	github.com/mattn/go-sqlite3 v2.0.1+incompatible // indirect
 	github.com/spf13/cast v1.10.0 // indirect
 	golang.org/x/text v0.31.0 // indirect
 )
