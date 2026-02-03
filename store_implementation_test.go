@@ -29,6 +29,7 @@ func initStore() (StoreInterface, error) {
 
 	store, err := NewStore(NewStoreOptions{
 		VaultTableName:     "vault_token",
+		VaultMetaTableName: "vault_meta",
 		DB:                 db,
 		AutomigrateEnabled: true,
 	})
@@ -53,6 +54,7 @@ func TestWithAutoMigrateFalse(t *testing.T) {
 
 	storeAutomigrateFalse, errAutomigrateFalse := NewStore(NewStoreOptions{
 		VaultTableName:     "vault_with_automigrate_false",
+		VaultMetaTableName: "vault_meta",
 		DB:                 db,
 		AutomigrateEnabled: false,
 	})
@@ -67,6 +69,7 @@ func TestWithAutoMigrateFalse(t *testing.T) {
 
 	storeAutomigrateTrue, errAutomigrateTrue := NewStore(NewStoreOptions{
 		VaultTableName:     "vault_with_automigrate_true",
+		VaultMetaTableName: "vault_meta",
 		DB:                 db,
 		AutomigrateEnabled: true,
 	})
@@ -89,6 +92,7 @@ func Test_Store_AutoMigrate(t *testing.T) {
 
 	store, err := NewStore(NewStoreOptions{
 		VaultTableName:     "vault_automigrate",
+		VaultMetaTableName: "vault_meta",
 		DB:                 db,
 		AutomigrateEnabled: false,
 	})
@@ -200,6 +204,7 @@ func Test_NewStore_Errors(t *testing.T) {
 
 	store, err := NewStore(NewStoreOptions{
 		VaultTableName:     "",
+		VaultMetaTableName: "vault_meta",
 		DB:                 db,
 		AutomigrateEnabled: false,
 	})
@@ -211,9 +216,25 @@ func Test_NewStore_Errors(t *testing.T) {
 		t.Fatal("Expected nil store for empty table name")
 	}
 
+	// Test with empty meta table name
+	store, err = NewStore(NewStoreOptions{
+		VaultTableName:     "vault_test",
+		VaultMetaTableName: "",
+		DB:                 db,
+		AutomigrateEnabled: false,
+	})
+
+	if err == nil {
+		t.Fatal("Expected error for empty meta table name but got nil")
+	}
+	if store != nil {
+		t.Fatal("Expected nil store for empty meta table name")
+	}
+
 	// Test with nil DB
 	store, err = NewStore(NewStoreOptions{
 		VaultTableName:     "vault_test",
+		VaultMetaTableName: "vault_meta",
 		DB:                 nil,
 		AutomigrateEnabled: false,
 	})
@@ -234,6 +255,7 @@ func Test_Store_EnableDebug(t *testing.T) {
 
 	store, err := NewStore(NewStoreOptions{
 		VaultTableName:     "vault_debug_test",
+		VaultMetaTableName: "vault_meta",
 		DB:                 db,
 		AutomigrateEnabled: false,
 		DebugEnabled:       false,
@@ -269,6 +291,7 @@ func Test_Store_SqlCreateTable(t *testing.T) {
 
 	store, err := NewStore(NewStoreOptions{
 		VaultTableName:     "vault_sql_test",
+		VaultMetaTableName: "vault_meta",
 		DB:                 db,
 		AutomigrateEnabled: false,
 	})
@@ -298,6 +321,7 @@ func Test_Store_DbDriverName(t *testing.T) {
 	// Test with explicit driver name
 	store, err := NewStore(NewStoreOptions{
 		VaultTableName:     "vault_driver_test",
+		VaultMetaTableName: "vault_meta",
 		DB:                 db,
 		DbDriverName:       "custom_driver",
 		AutomigrateEnabled: false,
@@ -314,6 +338,7 @@ func Test_Store_DbDriverName(t *testing.T) {
 	// Test with auto-detected driver name
 	store2, err := NewStore(NewStoreOptions{
 		VaultTableName:     "vault_driver_test2",
+		VaultMetaTableName: "vault_meta",
 		DB:                 db,
 		DbDriverName:       "", // Empty to test auto-detection
 		AutomigrateEnabled: false,
@@ -337,6 +362,7 @@ func Test_Store_toQuerableContext(t *testing.T) {
 
 	store, err := NewStore(NewStoreOptions{
 		VaultTableName:     "vault_context_test",
+		VaultMetaTableName: "vault_meta",
 		DB:                 db,
 		AutomigrateEnabled: false,
 	})

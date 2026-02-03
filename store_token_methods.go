@@ -10,6 +10,7 @@ import (
 	"github.com/dracory/sb"
 	"github.com/dromara/carbon/v2"
 	"github.com/samber/lo"
+	"gorm.io/gorm"
 )
 
 // ErrTokenExpired is returned when a token has expired
@@ -25,7 +26,6 @@ type TokenCreateOptions struct {
 // TokenCreate creates a new record and returns the token
 func (store *storeImplementation) TokenCreate(ctx context.Context, data string, password string, tokenLength int, options ...TokenCreateOptions) (token string, err error) {
 	maxAttempts := 3
-	var lastErr error
 
 	for attempt := 0; attempt < maxAttempts; attempt++ {
 		token, err = generateToken(tokenLength)
@@ -39,7 +39,6 @@ func (store *storeImplementation) TokenCreate(ctx context.Context, data string, 
 			return "", err
 		}
 		if existing != nil {
-			lastErr = errors.New("token collision detected")
 			continue // Try again with a new token
 		}
 
@@ -61,20 +60,34 @@ func (store *storeImplementation) TokenCreate(ctx context.Context, data string, 
 
 		err = store.RecordCreate(ctx, newEntry)
 		if err != nil {
-			lastErr = err
 			continue // Try again
+		}
+
+		// Link record to password identity only if the feature is enabled
+		if store.passwordIdentityEnabled {
+			passwordID, err := store.findOrCreateIdentity(ctx, password)
+			if err != nil {
+				return "", fmt.Errorf("failed to find or create identity: %w", err)
+			}
+
+			err = store.linkRecordToIdentity(ctx, newEntry.GetID(), passwordID)
+			if err != nil {
+				return "", fmt.Errorf("failed to link record to identity: %w", err)
+			}
 		}
 
 		return token, nil
 	}
 
-	if lastErr == nil {
-		return "", errors.New("failed to create unique token after " + string(rune('0'+maxAttempts)) + " attempts")
-	}
-	return "", errors.New("failed to create unique token after " + string(rune('0'+maxAttempts)) + " attempts: " + lastErr.Error())
+	return "", errors.New("failed to create token")
 }
 
 func (store *storeImplementation) TokenCreateCustom(ctx context.Context, token string, data string, password string, options ...TokenCreateOptions) (err error) {
+	// Validate token is not empty (custom tokens can have any format)
+	if token == "" {
+		return errors.New("token is empty")
+	}
+
 	// Check if token already exists
 	existing, err := store.RecordFindByToken(ctx, token)
 	if err != nil {
@@ -101,9 +114,21 @@ func (store *storeImplementation) TokenCreateCustom(ctx context.Context, token s
 	}
 
 	err = store.RecordCreate(ctx, newEntry)
-
 	if err != nil {
 		return err
+	}
+
+	// Link record to password identity only if the feature is enabled
+	if store.passwordIdentityEnabled {
+		passwordID, err := store.findOrCreateIdentity(ctx, password)
+		if err != nil {
+			return fmt.Errorf("failed to find or create identity: %w", err)
+		}
+
+		err = store.linkRecordToIdentity(ctx, newEntry.GetID(), passwordID)
+		if err != nil {
+			return fmt.Errorf("failed to link record to identity: %w", err)
+		}
 	}
 
 	return nil
@@ -165,6 +190,10 @@ func (store *storeImplementation) TokenExists(ctx context.Context, token string)
 // - value: The value of the token
 // - err: An error if something went wrong
 func (store *storeImplementation) TokenRead(ctx context.Context, token string, password string) (value string, err error) {
+	if token == "" {
+		return "", errors.New("token is empty")
+	}
+
 	entry, err := store.RecordFindByToken(ctx, token)
 
 	if err != nil {
@@ -190,11 +219,46 @@ func (store *storeImplementation) TokenRead(ctx context.Context, token string, p
 		return "", err
 	}
 
+	// On-access migration: Check if record is linked to a password identity
+	// Only if password identity feature is enabled
+	// If not, link it now (this handles records created before identity-based management)
+	if store.passwordIdentityEnabled {
+		existingPassID, _ := store.getRecordPasswordID(ctx, entry.GetID())
+		if existingPassID == "" {
+			// Record not linked yet, create the link within a transaction
+			err = store.gormDB.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+				// Create identity within transaction
+				passwordID, identityErr := store.findOrCreateIdentity(ctx, password)
+				if identityErr != nil {
+					return fmt.Errorf("unable to create identity for record %s: %w", entry.GetID(), identityErr)
+				}
+
+				// Link record to identity within same transaction
+				linkErr := store.linkRecordToIdentity(ctx, entry.GetID(), passwordID)
+				if linkErr != nil {
+					return fmt.Errorf("unable to link record %s to identity %s: %w", entry.GetID(), passwordID, linkErr)
+				}
+
+				return nil
+			})
+
+			if err != nil {
+				// Transaction failed - this is a data consistency issue
+				// Return error to signal the problem to the caller
+				return "", fmt.Errorf("migration transaction failed for record %s: %w", entry.GetID(), err)
+			}
+		}
+	}
+
 	return decoded, nil
 }
 
 // TokenRenew extends the expiration time of an existing token
 func (store *storeImplementation) TokenRenew(ctx context.Context, token string, expiresAt time.Time) error {
+	if token == "" {
+		return errors.New("token is empty")
+	}
+
 	entry, err := store.RecordFindByToken(ctx, token)
 
 	if err != nil {
@@ -304,6 +368,10 @@ func (store *storeImplementation) TokenSoftDelete(ctx context.Context, token str
 // Returns:
 // - err: An error if something went wrong
 func (store *storeImplementation) TokenUpdate(ctx context.Context, token string, value string, password string) (err error) {
+	if token == "" {
+		return errors.New("token is empty")
+	}
+
 	entry, errFind := store.RecordFindByToken(ctx, token)
 
 	if errFind != nil {
@@ -321,7 +389,25 @@ func (store *storeImplementation) TokenUpdate(ctx context.Context, token string,
 
 	entry.SetValue(encodedValue)
 
-	return store.RecordUpdate(ctx, entry)
+	err = store.RecordUpdate(ctx, entry)
+	if err != nil {
+		return err
+	}
+
+	// Link record to password identity only if the feature is enabled
+	if store.passwordIdentityEnabled {
+		passwordID, err := store.findOrCreateIdentity(ctx, password)
+		if err != nil {
+			return fmt.Errorf("failed to find or create identity: %w", err)
+		}
+
+		err = store.linkRecordToIdentity(ctx, entry.GetID(), passwordID)
+		if err != nil {
+			return fmt.Errorf("failed to link record to identity: %w", err)
+		}
+	}
+
+	return nil
 }
 
 // TokensRead reads a list of tokens, returns a map of token to value
@@ -338,6 +424,13 @@ func (store *storeImplementation) TokenUpdate(ctx context.Context, token string,
 // - err: An error if something went wrong
 func (store *storeImplementation) TokensRead(ctx context.Context, tokens []string, password string) (values map[string]string, err error) {
 	values = map[string]string{}
+
+	// Validate all tokens are not empty
+	for _, token := range tokens {
+		if token == "" {
+			return values, errors.New("token cannot be empty")
+		}
+	}
 
 	entries, err := store.RecordList(ctx, RecordQuery().SetTokenIn(tokens))
 

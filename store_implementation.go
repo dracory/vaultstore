@@ -11,20 +11,29 @@ import (
 
 // Store defines a session store
 type storeImplementation struct {
-	vaultTableName     string
-	db                 *sql.DB
-	gormDB             *gorm.DB
-	dbDriverName       string
-	automigrateEnabled bool
-	debugEnabled       bool
+	vaultTableName          string
+	vaultMetaTableName      string
+	db                      *sql.DB
+	gormDB                  *gorm.DB
+	dbDriverName            string
+	automigrateEnabled      bool
+	debugEnabled            bool
+	cryptoConfig            *CryptoConfig
+	passwordIdentityEnabled bool
 }
 
 var _ StoreInterface = (*storeImplementation)(nil) // verify it extends the interface
 
 // AutoMigrate auto migrate
 func (store *storeImplementation) AutoMigrate() error {
-	// Use GORM's AutoMigrate with dynamic table name
-	return store.gormDB.Table(store.vaultTableName).AutoMigrate(&gormVaultRecord{})
+	// Use GORM's AutoMigrate with dynamic table name for vault records
+	err := store.gormDB.Table(store.vaultTableName).AutoMigrate(&gormVaultRecord{})
+	if err != nil {
+		return err
+	}
+
+	// Always migrate the meta table
+	return store.gormDB.Table(store.vaultMetaTableName).AutoMigrate(&gormVaultMeta{})
 }
 
 // EnableDebug - enables the debug option
@@ -38,6 +47,10 @@ func (store *storeImplementation) GetDbDriverName() string {
 
 func (store *storeImplementation) GetVaultTableName() string {
 	return store.vaultTableName
+}
+
+func (store *storeImplementation) GetMetaTableName() string {
+	return store.vaultMetaTableName
 }
 
 func (store *storeImplementation) toQuerableContext(context context.Context) database.QueryableContext {

@@ -14,6 +14,10 @@ func NewStore(opts NewStoreOptions) (*storeImplementation, error) {
 		return nil, errors.New("vault store: vaultTableName is required")
 	}
 
+	if opts.VaultMetaTableName == "" {
+		return nil, errors.New("vault store: vaultMetaTableName is required")
+	}
+
 	if opts.DB == nil {
 		return nil, errors.New("vault store: DB is required")
 	}
@@ -21,6 +25,12 @@ func NewStore(opts NewStoreOptions) (*storeImplementation, error) {
 	dbDriverName := opts.DbDriverName
 	if dbDriverName == "" {
 		dbDriverName = database.DatabaseType(opts.DB)
+	}
+
+	// Set crypto config with secure defaults
+	cryptoConfig := opts.CryptoConfig
+	if cryptoConfig == nil {
+		cryptoConfig = DefaultCryptoConfig()
 	}
 
 	// Initialize GORM DB from existing *sql.DB using glebarez/sqlite (pure Go)
@@ -32,12 +42,15 @@ func NewStore(opts NewStoreOptions) (*storeImplementation, error) {
 	}
 
 	store := &storeImplementation{
-		vaultTableName:     opts.VaultTableName,
-		automigrateEnabled: opts.AutomigrateEnabled,
-		db:                 opts.DB,
-		gormDB:             gormDB,
-		dbDriverName:       dbDriverName,
-		debugEnabled:       opts.DebugEnabled,
+		vaultTableName:          opts.VaultTableName,
+		vaultMetaTableName:      opts.VaultMetaTableName,
+		automigrateEnabled:      opts.AutomigrateEnabled,
+		db:                      opts.DB,
+		gormDB:                  gormDB,
+		dbDriverName:            dbDriverName,
+		debugEnabled:            opts.DebugEnabled,
+		cryptoConfig:            cryptoConfig,
+		passwordIdentityEnabled: opts.PasswordIdentityEnabled,
 	}
 
 	if store.automigrateEnabled {

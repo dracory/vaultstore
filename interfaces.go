@@ -29,6 +29,26 @@ type RecordInterface interface {
 	SetValue(value string) RecordInterface
 }
 
+// MetaInterface defines the methods that a VaultMeta must implement
+type MetaInterface interface {
+	Data() map[string]string
+	DataChanged() map[string]string
+
+	// Getters
+	GetID() uint
+	GetObjectType() string
+	GetObjectID() string
+	GetKey() string
+	GetValue() string
+
+	// Setters
+	SetID(id uint) MetaInterface
+	SetObjectType(objectType string) MetaInterface
+	SetObjectID(objectID string) MetaInterface
+	SetKey(key string) MetaInterface
+	SetValue(value string) MetaInterface
+}
+
 type RecordQueryInterface interface {
 	Validate() error
 
@@ -83,6 +103,7 @@ type StoreInterface interface {
 
 	GetDbDriverName() string
 	GetVaultTableName() string
+	GetMetaTableName() string
 
 	RecordCount(ctx context.Context, query RecordQueryInterface) (int64, error)
 	RecordCreate(ctx context.Context, record RecordInterface) error
@@ -107,4 +128,16 @@ type StoreInterface interface {
 	TokenSoftDelete(ctx context.Context, token string) error
 	TokenUpdate(ctx context.Context, token string, value string, password string) error
 	TokensRead(ctx context.Context, tokens []string, password string) (map[string]string, error)
+
+	// Identity-based password management
+	BulkRekey(ctx context.Context, oldPassword, newPassword string) (int, error)
+	MigrateRecordLinks(ctx context.Context, password string) (int, error)
+
+	// Vault settings
+	GetVaultVersion(ctx context.Context) (string, error)
+	SetVaultVersion(ctx context.Context, version string) error
+	IsVaultMigrated(ctx context.Context) (bool, error)
+	MarkVaultMigrated(ctx context.Context) error
+	GetVaultSetting(ctx context.Context, key string) (string, error)
+	SetVaultSetting(ctx context.Context, key, value string) error
 }

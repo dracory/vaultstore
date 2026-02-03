@@ -25,6 +25,9 @@ func decode(value string, password string) (string, error) {
 }
 
 // decodeV1 handles legacy XOR-based decryption
+// Deprecated: insecure legacy v1 decryption, use decodeV2 instead.
+// This function is retained only for reading legacy encrypted data.
+// It will be removed in version 2.0.
 func decodeV1(value string, password string) (string, error) {
 	strongPassword := strongifyPassword(password)
 	first, err := xorDecrypt(value, strongPassword)
@@ -168,7 +171,10 @@ func deriveKeyArgon2id(password string, salt []byte) []byte {
 // strongifyPassword Performs multiple calculations
 // on top of the password and changes it to a derivative
 // long hash. This is done so that even simple and not-long
-// passwords  can become longer and stronger (144 characters).
+// passwords can become longer and stronger (144 characters).
+// Deprecated: insecure legacy v1 key derivation using MD5/SHA1, use deriveKeyArgon2id instead.
+// This function is retained only for reading legacy encrypted data.
+// It will be removed in version 2.0.
 func strongifyPassword(password string) string {
 	p1 := strToMD5Hash(password) + strToMD5Hash(password) + strToMD5Hash(password) + strToMD5Hash(password)
 
@@ -181,6 +187,7 @@ func strongifyPassword(password string) string {
 }
 
 // createRandomBlock returns a random string of specified length
+// Deprecated: insecure legacy v1 function, will be removed in version 2.0.
 func createRandomBlock(length int) string {
 	const characters = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 	result := make([]byte, length)
@@ -191,6 +198,7 @@ func createRandomBlock(length int) string {
 }
 
 // calculateRequiredBlockLength calculates block length (128) required to contain a length
+// Deprecated: insecure legacy v1 function, will be removed in version 2.0.
 func calculateRequiredBlockLength(v int) int {
 	a := 128
 	for v > a {
