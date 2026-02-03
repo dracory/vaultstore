@@ -1,11 +1,11 @@
 ---
 path: architecture.md
 page-type: overview
-summary: System architecture, design patterns, and key architectural decisions.
-tags: [architecture, design, patterns, system]
+summary: System architecture, design patterns, and key architectural decisions including identity-based password management.
+tags: [architecture, design, patterns, system, identity, metadata]
 created: 2026-02-03
 updated: 2026-02-03
-version: 1.0.0
+version: 1.1.0
 ---
 
 # Architecture
@@ -153,12 +153,15 @@ The store implementation acts as a repository, abstracting database operations:
 
 ```go
 type storeImplementation struct {
-    vaultTableName     string
-    automigrateEnabled bool
-    db                 *sql.DB
-    gormDB             *gorm.DB
-    dbDriverName       string
-    debugEnabled       bool
+    vaultTableName          string
+    vaultMetaTableName      string
+    automigrateEnabled      bool
+    db                      *sql.DB
+    gormDB                  *gorm.DB
+    dbDriverName            string
+    debugEnabled            bool
+    cryptoConfig            *CryptoConfig
+    passwordIdentityEnabled bool
 }
 ```
 
@@ -237,7 +240,85 @@ CREATE TABLE vault (
     soft_deleted_at TEXT,                   -- Soft delete timestamp
     data            TEXT                    -- JSON metadata
 );
+
+CREATE INDEX IF NOT EXISTS idx_vault_soft_deleted_at ON vault(soft_deleted_at);
 ```
+
+### Metadata Table Structure
+
+The vault_meta table stores password identities and vault settings:
+
+```sql
+CREATE TABLE vault_meta (
+    id           INTEGER PRIMARY KEY AUTOINCREMENT,
+    object_type  TEXT NOT NULL,    -- 'password_identity', 'record', 'vault'
+    object_id    TEXT NOT NULL,    -- Unique ID for the object
+    meta_key     TEXT NOT NULL,    -- 'hash', 'password_id', 'version'
+    meta_value   TEXT,             -- Value (hash, ID, or setting)
+    created_at   TEXT NOT NULL,
+    updated_at   TEXT NOT NULL
+);
+
+CREATE INDEX idx_vault_meta_obj ON vault_meta(object_type, object_id, meta_key);
+```
+
+#### Object Types
+
+**Password Identity Objects:**
+- `object_type`: `password_identity`
+- `object_id`: `p_<uuid>` - Unique password ID
+- `meta_key`: `hash`
+- `meta_value`: Bcrypt/Argon2 hash of the password
+
+**Record Link Objects:**
+- `object_type`: `record`
+- `object_id`: `r_<uuid>` - Record ID
+- `meta_key`: `password_id`
+- `meta_value`: Reference to password identity ID
+
+**Vault Settings Objects:**
+- `object_type`: `vault`
+- `object_id`: `settings`
+- `meta_key`: `version`
+- `meta_value`: Vault version string
+
+## Identity-Based Password Management
+
+### Architecture Overview
+
+The identity-based password management system uses a generic metadata table to track relationships between records and passwords:
+
+```mermaid
+graph TB
+    subgraph "Password Identity"
+        PI[Password Identity] --> |stores| PH[Password Hash]
+    end
+    
+    subgraph "Records"
+        R1[Record 1] --> |links to| PI
+        R2[Record 2] --> |links to| PI
+        R3[Record 3] --> |links to| PI
+    end
+    
+    subgraph "Metadata Table"
+        M1[password_identity p_xxx hash $2y$...]
+        M2[record r_001 password_id p_xxx]
+        M3[record r_002 password_id p_xxx]
+    end
+```
+
+### Key Benefits
+
+1. **Fast Bulk Rekey**: O(1) vs O(n) complexity
+2. **Password Deduplication**: Automatic grouping by password
+3. **Backward Compatible**: Existing records work without migration
+4. **Optional Feature**: Can be enabled/disabled per store instance
+
+### Migration Strategy
+
+1. **On-Access Migration**: Records are linked to identities when accessed
+2. **Batch Migration**: `MigrateRecordLinks()` processes all records for a password
+3. **Version Tracking**: Vault settings track migration state
 
 ## Migration Strategy
 
@@ -330,3 +411,9 @@ type Validator interface {
 - [Modules](modules/) - Individual module documentation
 - [Getting Started](getting_started.md) - Setup and usage guide
 - [Configuration](configuration.md) - Configuration options
+- [Password Identity Management](modules/password_identity_management.md) - Identity-based password management
+
+## Changelog
+
+- **v1.1.0** (2026-02-03): Added documentation for vault_meta table structure and identity-based password management architecture.
+- **v1.0.0** (2026-02-03): Initial architecture documentation

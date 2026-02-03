@@ -35,11 +35,14 @@ if err != nil {
 
 // Create a new store
 store, err := vaultstore.NewStore(vaultstore.NewStoreOptions{
-    VaultTableName:     "vault",
-    DB:                 db,
-    DbDriverName:       "sqlite3",
-    AutomigrateEnabled: true,
-    DebugEnabled:       false,
+    VaultTableName:          "vault",
+    VaultMetaTableName:      "vault_meta",
+    DB:                      db,
+    DbDriverName:            "sqlite3",
+    AutomigrateEnabled:      true,
+    DebugEnabled:            false,
+    PasswordIdentityEnabled: true,
+    CryptoConfig:            vaultstore.DefaultCryptoConfig(),
 })
 if err != nil {
     panic(err)
@@ -292,3 +295,43 @@ err = store.RecordDeleteByID(ctx, foundRecord.ID())
 if err != nil {
     panic(err)
 }
+```
+
+## Bulk Password Changes
+
+### Using BulkRekey
+
+When `PasswordIdentityEnabled` is true, you can efficiently change passwords for all records encrypted with a specific password:
+
+```go
+ctx := context.Background()
+oldPassword := "old-password"
+newPassword := "new-password"
+
+// Rekey all records using oldPassword to use newPassword
+count, err := store.BulkRekey(ctx, oldPassword, newPassword)
+if err != nil {
+    panic(err)
+}
+
+fmt.Printf("Re-encrypted %d records\n", count)
+```
+
+**Performance:** With identity management enabled, bulk rekey is O(1) complexity vs O(n) without.
+
+### Migrating Existing Records
+
+To migrate existing records to use identity management:
+
+```go
+ctx := context.Background()
+password := "my-password"
+
+// Migrate all records that use this password
+count, err := store.MigrateRecordLinks(ctx, password)
+if err != nil {
+    panic(err)
+}
+
+fmt.Printf("Migrated %d records to use identity management\n", count)
+```

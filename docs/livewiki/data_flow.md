@@ -1,11 +1,11 @@
 ---
 path: data_flow.md
 page-type: overview
-summary: How data moves through the VaultStore system.
-tags: [data-flow, architecture, processing, lifecycle]
+summary: How data moves through the VaultStore system including identity-based password management flows.
+tags: [data-flow, architecture, processing, lifecycle, identity]
 created: 2026-02-03
 updated: 2026-02-03
-version: 1.0.0
+version: 1.1.0
 ---
 
 # Data Flow
@@ -300,9 +300,104 @@ graph TB
 - **Security Events**: Failed authentications, suspicious activities
 - **Performance Events**: Slow queries, resource usage
 
+## Identity-Based Data Flows
+
+These flows apply when `PasswordIdentityEnabled` is set to `true`.
+
+### Token Creation with Identity
+
+```mermaid
+sequenceDiagram
+    participant App as Application
+    participant Store as VaultStore
+    participant MetaDB as Metadata DB
+    participant VaultDB as Vault DB
+    participant Encrypt as Encryption
+    
+    App->>Store: TokenCreate(value, password, length)
+    Store->>MetaDB: FindIdentityID(password)
+    alt Identity Exists
+        MetaDB-->>Store: passwordID
+    else Identity Not Found
+        Store->>Encrypt: HashPassword(password)
+        Encrypt-->>Store: passwordHash
+        Store->>MetaDB: CreateIdentity(passwordHash)
+        MetaDB-->>Store: passwordID
+    end
+    Store->>Encrypt: EncryptValue(value, password)
+    Encrypt-->>Store: encryptedValue
+    Store->>VaultDB: CreateRecord(token, encryptedValue)
+    VaultDB-->>Store: record
+    Store->>MetaDB: LinkRecord(record.ID, passwordID)
+    Store-->>App: token
+```
+
+### Bulk Rekey Flow (Fast Path)
+
+```mermaid
+sequenceDiagram
+    participant App as Application
+    participant Store as VaultStore
+    participant MetaDB as Metadata DB
+    participant VaultDB as Vault DB
+    participant Encrypt as Encryption
+    
+    App->>Store: BulkRekey(oldPass, newPass)
+    Store->>MetaDB: FindIdentityID(oldPass)
+    MetaDB-->>Store: oldPasswordID
+    Store->>MetaDB: FindRecordsByIdentity(oldPasswordID)
+    MetaDB-->>Store: recordIDs[]
+    loop For Each Record
+        Store->>VaultDB: GetRecord(recordID)
+        VaultDB-->>Store: record
+        Store->>Encrypt: Decrypt(record.value, oldPass)
+        Encrypt-->>Store: value
+        Store->>Encrypt: Encrypt(value, newPass)
+        Encrypt-->>Store: newEncryptedValue
+        Store->>VaultDB: UpdateRecord(recordID, newEncryptedValue)
+    end
+    Store->>Encrypt: HashPassword(newPass)
+    Encrypt-->>Store: newPasswordHash
+    Store->>MetaDB: UpdateIdentity(oldPasswordID, newPasswordHash)
+    Store-->>App: count
+```
+
+### Migration Flow
+
+```mermaid
+sequenceDiagram
+    participant App as Application
+    participant Store as VaultStore
+    participant VaultDB as Vault DB
+    participant Encrypt as Encryption
+    participant MetaDB as Metadata DB
+    
+    App->>Store: MigrateRecordLinks(password)
+    Store->>VaultDB: GetAllRecords()
+    VaultDB-->>Store: records[]
+    loop For Each Record
+        Store->>Encrypt: TryDecrypt(record, password)
+        alt Decryption Success
+            Encrypt-->>Store: value
+            Store->>MetaDB: FindOrCreateIdentity(password)
+            MetaDB-->>Store: passwordID
+            Store->>MetaDB: LinkRecord(record.ID, passwordID)
+        else Decryption Failed
+            Encrypt-->>Store: error
+        end
+    end
+    Store-->>App: migratedCount
+```
+
 ## See Also
 
 - [Architecture](architecture.md) - System design and patterns
 - [API Reference](api_reference.md) - Complete API documentation
 - [Token Operations](modules/token_operations.md) - Token-specific operations
 - [Query Interface](modules/query_interface.md) - Query system details
+- [Password Identity Management](modules/password_identity_management.md) - Identity-based password management
+
+## Changelog
+
+- **v1.1.0** (2026-02-03): Added identity-based data flow diagrams for token creation, bulk rekey, and migration operations.
+- **v1.0.0** (2026-02-03): Initial data flow documentation

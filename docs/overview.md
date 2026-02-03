@@ -40,6 +40,17 @@ Tokens abstract away the direct manipulation of Record objects, providing a simp
 The `StoreInterface` defines the contract for interacting with the vault:
 
 ```go
+type NewStoreOptions struct {
+    VaultTableName          string
+    VaultMetaTableName      string
+    DB                      *sql.DB
+    DbDriverName            string
+    AutomigrateEnabled      bool
+    DebugEnabled            bool
+    CryptoConfig            *CryptoConfig
+    PasswordIdentityEnabled bool
+}
+
 type StoreInterface interface {
     AutoMigrate() error
     EnableDebug(debug bool)
@@ -63,4 +74,38 @@ type StoreInterface interface {
 
 ## Encryption
 
-VaultStore encrypts secret values before storing them in the database. The encryption is password-based, meaning you need the correct password to decrypt and access the secret value.
+VaultStore uses **AES-256-GCM** authenticated encryption with **Argon2id** key derivation to protect secret values. The encryption is password-based, meaning you need the correct password to decrypt and access the secret value.
+
+### Configurable Cryptography
+
+You can configure cryptographic parameters via `CryptoConfig`:
+
+```go
+// Default configuration
+vaultstore.DefaultCryptoConfig()
+
+// High security (4 iterations, 128MB memory)
+vaultstore.HighSecurityCryptoConfig()
+
+// Lightweight (2 iterations, 32MB memory)
+vaultstore.LightweightCryptoConfig()
+```
+
+### Password Identity Management
+
+VaultStore includes an optional **identity-based password management** feature that enables efficient bulk password changes:
+
+- **Optimized Bulk Rekey**: O(1) complexity vs O(n) scan-and-test
+- **Password Deduplication**: Automatic grouping of records by password
+- **Metadata-Based**: Uses vault_meta table for identity tracking
+- **Backward Compatible**: Existing records work without migration
+
+Enable with:
+```go
+vault, err := vaultstore.NewStore(vaultstore.NewStoreOptions{
+    VaultTableName:          "vault",
+    VaultMetaTableName:      "vault_meta",
+    DB:                      db,
+    PasswordIdentityEnabled: true,
+})
+```

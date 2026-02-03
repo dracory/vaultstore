@@ -2,6 +2,15 @@
 
 This document contains the version history and changes for the VaultStore project.
 
+## 2026
+
+### 2026.02.03
+- Added identity-based password management for optimized bulk rekey operations
+- Added configurable cryptographic parameters via CryptoConfig (Argon2id, AES-256-GCM)
+- Added vault_meta table for password identity tracking and vault settings
+- Added BulkRekey and MigrateRecordLinks methods for efficient password rotation
+- Updated encryption from custom XOR scheme to AES-256-GCM with Argon2id KDF
+
 ## 2025
 
 ### 2025.03.13

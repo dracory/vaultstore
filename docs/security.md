@@ -34,40 +34,36 @@ This document summarizes the security properties, assumptions, and risks of the 
 
 - **Password-derived key**
   - Calling code provides a `password` for `TokenCreate`/`TokenUpdate` and must use the same password for `TokenRead`/`TokensRead`.
-  - A *custom* derivation function `strongifyPassword` transforms the password using MD5, SHA-1, SHA-256 combinations to produce a long string.
+  - Uses **Argon2id** key derivation function with configurable parameters via `CryptoConfig`.
+  - Default parameters: 3 iterations, 64MB memory, parallelism of 4.
 
-- **Encryption construction (custom)**
-  - `encode` pipeline:
-    - Base64-encode the plaintext value.
-    - Prefix the encoded value with its length and an underscore (`<len>_<b64>`).
-    - Pad with pseudo-random characters to a fixed block length (>=128, doubling as needed).
-    - Base64-encode the padded string.
-    - XOR the result with the `strongifyPassword` output and Base64-encode that.
-  - `decode` performs the inverse operations and validates structure (Base64 check, length parsing).
+- **Encryption construction (AES-256-GCM)**
+  - Uses standard AES-256-GCM authenticated encryption.
+  - Each encryption generates a unique 12-byte nonce.
+  - Ciphertext format: `base64(nonce || ciphertext || tag)`.
+  - Built-in authentication tag provides integrity and authenticity guarantees.
 
 - **Randomness**
-  - Token generation uses `crypto/rand` via `randomFromGamma` (good source of entropy) and a restricted gamma of `[a-z0-9]`.
-  - Padding within `encode` uses `math/rand/v2` (non-cryptographic PRNG) to generate filler characters; this is not relied on for confidentiality, only obfuscation.
+  - Token generation uses `crypto/rand` for cryptographically secure randomness.
+  - Salt generation uses `crypto/rand`.
+  - All cryptographic operations use secure random sources.
 
 ### Security Assessment of the Crypto Model
 
-- **Custom crypto construction**
-  - The scheme is *not* a standard, vetted construction (e.g., AES-GCM, XChaCha20-Poly1305, libsodium secretbox).
-  - XOR-based schemes are typically fragile and prone to misuse; security relies entirely on correct, non-reused key usage and input handling.
+- **Standard crypto construction**
+  - Uses well-reviewed AES-256-GCM authenticated encryption.
+  - Argon2id is the current recommended password hashing algorithm (OWASP, IETF).
+  - Construction provides both confidentiality and authenticity.
 
 - **Password derivation**
-  - `strongifyPassword` combines MD5, SHA-1, and SHA-256, but:
-    - It is not a standard password hashing / KDF function (e.g., Argon2, scrypt, PBKDF2).
-    - It does not use salt or work factor / iteration count tuned to slow down brute-force attacks.
-  - Consequence: Offline brute-force of passwords is easier than with dedicated password KDFs.
+  - Argon2id with tunable parameters (iterations, memory, parallelism).
+  - Per-record salt generated via `crypto/rand`.
+  - Memory-hard function resists GPU/ASIC attacks.
 
 - **Integrity / authenticity**
-  - There is no explicit MAC / AEAD tag.
-  - Structural checks (Base64 validation, length parsing) provide **weak** integrity guarantees and may detect some corruptions or wrong passwords but are *not* cryptographic authenticity.
-
-- **Error messages**
-  - Decoding errors sometimes leak implementation details via error prefixes (e.g., `"xor. ..."`, `"base64.1. ..."`, `"vault password incorrect"`).
-  - This can slightly aid an attacker performing targeted cryptanalysis or password guessing.
+  - AES-GCM provides built-in authentication tags.
+  - Tampering with ciphertext is detected during decryption.
+  - No reliance on ad-hoc integrity checks.
 
 ## Data Store and SQL Layer
 
@@ -129,18 +125,12 @@ To use `vaultstore` safely, the integrating application must handle:
 
 ### Medium-Term (Library Changes)
 
-- **Replace custom crypto with standard AEAD**
-  - Migrate `encode`/`decode` to a well-reviewed construction, such as:
-    - AES-256-GCM or ChaCha20-Poly1305 via Go’s `crypto` packages or
-    - A high-level library (e.g., `golang.org/x/crypto` primitives) that provides AEAD with nonce handling.
-  - Store nonce + ciphertext (and optional associated data) in `vault_value`.
-
-- **Use a standard KDF**
-  - Replace `strongifyPassword` with a standard KDF (e.g., Argon2id, scrypt, or PBKDF2 with many iterations and per-record salt).
-  - Store salt (and possibly KDF parameters) per record alongside the ciphertext.
+- **CryptoConfig tuning**
+  - Adjust Argon2id parameters based on your security requirements and performance constraints.
+  - Use `HighSecurityCryptoConfig()` for maximum protection or `LightweightCryptoConfig()` for resource-constrained environments.
 
 - **Add integrity protection**
-  - Leverage AEAD’s built-in authentication tag rather than ad-hoc Base64 and length checks.
+  - AES-GCM already provides built-in authentication; ensure it's used consistently.
 
 - **Clarify threat model in docs**
   - Document explicitly that:
@@ -158,8 +148,8 @@ To use `vaultstore` safely, the integrating application must handle:
 
 ## Known Limitations
 
-- Custom XOR-based encryption and non-standard password derivation may not meet compliance requirements (e.g., PCI-DSS, ISO 27001) without further justification and review.
-- There is no built-in key rotation or re-encryption mechanism; rotation must be implemented by the application using `TokenRead` + `TokenUpdate` with new parameters.
+- AES-256-GCM encryption with Argon2id KDF provides strong security but may require tuning for specific compliance requirements (e.g., PCI-DSS, ISO 27001).
+- Built-in key rotation is now available via `BulkRekey()` when `PasswordIdentityEnabled` is true; otherwise rotation requires `TokenRead` + `TokenUpdate`.
 - The library assumes a trustworthy database driver and the `github.com/dracory/database` / `github.com/dracory/sb` helpers are secure against injection and misconfiguration.
 
 ---

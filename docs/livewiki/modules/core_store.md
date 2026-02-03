@@ -1,11 +1,11 @@
 ---
 path: modules/core_store.md
 page-type: module
-summary: Core store implementation and main interface documentation.
-tags: [module, core, store, interface]
+summary: Core store implementation and main interface documentation including CryptoConfig and Password Identity options.
+tags: [module, core, store, interface, cryptoconfig, identity]
 created: 2026-02-03
 updated: 2026-02-03
-version: 1.0.0
+version: 1.1.0
 ---
 
 # Core Store Module
@@ -114,11 +114,14 @@ func NewStore(opts NewStoreOptions) (*storeImplementation, error)
 
 ```go
 type NewStoreOptions struct {
-    VaultTableName     string  // Required: Table name
-    DB                 *sql.DB // Required: Database connection
-    AutomigrateEnabled bool    // Optional: Auto migration
-    DebugEnabled       bool    // Optional: Debug logging
-    DbDriverName       string  // Optional: Driver name
+    VaultTableName          string
+    VaultMetaTableName      string
+    DB                      *sql.DB
+    DbDriverName            string
+    AutomigrateEnabled      bool
+    DebugEnabled            bool
+    CryptoConfig            *CryptoConfig
+    PasswordIdentityEnabled bool
 }
 ```
 
@@ -344,3 +347,9 @@ func createTestStore(t *testing.T) StoreInterface {
 - [Record Management](record_management.md) - Record operations
 - [Token Operations](token_operations.md) - Token-specific operations
 - [Configuration](../configuration.md) - Configuration options
+- [Password Identity Management](password_identity_management.md) - Identity-based password management
+
+## Changelog
+
+- **v1.1.0** (2026-02-03): Updated NewStoreOptions documentation with CryptoConfig, PasswordIdentityEnabled, and VaultMetaTableName fields.
+- **v1.0.0** (2026-02-03): Initial core store module documentation

@@ -1,11 +1,11 @@
 ---
 path: llm-context.md
 page-type: overview
-summary: Complete codebase summary optimized for LLM consumption.
-tags: [llm, context, summary]
+summary: Complete codebase summary optimized for LLM consumption including identity-based password management features.
+tags: [llm, context, summary, identity, cryptoconfig]
 created: 2026-02-03
 updated: 2026-02-03
-version: 1.0.0
+version: 1.1.0
 ---
 
 # LLM Context: VaultStore
@@ -30,18 +30,27 @@ VaultStore is a secure value storage (data-at-rest) implementation for Go, desig
 vaultstore/
 ├── docs/                   # Documentation
 │   ├── livewiki/           # LiveWiki documentation
+│   │   ├── modules/
+│   │   │   ├── core_store.md
+│   │   │   ├── encryption.md
+│   │   │   ├── query_interface.md
+│   │   │   ├── record_management.md
+│   │   │   ├── token_operations.md
+│   │   │   └── password_identity_management.md  # New module
+│   │   └── *.md            # Other wiki pages
 │   ├── proposals/          # Design proposals
 │   └── *.md                # Other docs
 ├── interfaces.go           # Core interfaces
-├── store_*.go             # Store implementation
+├── constants.go            # Constants and CryptoConfig
+├── store_*.go              # Store implementation
 ├── record_*.go             # Record operations
 ├── token_*.go              # Token operations
 ├── encdec*.go              # Encryption/decryption
-├── functions.go           # Utility functions
-├── consts.go               # Constants
+├── functions.go            # Utility functions
 ├── gorm_model.go           # GORM models
 ├── is_token.go             # Token validation
 ├── sqls.go                 # SQL queries
+├── meta_*.go               # Metadata operations
 ├── *_test.go               # Test files
 ├── go.mod                  # Go module
 └── README.md               # Project README
@@ -49,13 +58,16 @@ vaultstore/
 
 ## Core Concepts
 
-1. **StoreInterface** - Main interface providing all vault operations including record management, token operations, and database management
+1. **StoreInterface** - Main interface providing all vault operations including record management, token operations, database management, and identity-based password management
 2. **RecordInterface** - Interface for record data operations with getters/setters for all record fields
 3. **RecordQueryInterface** - Builder pattern interface for flexible query construction
-4. **Tokens** - Unique identifiers providing secure access to stored encrypted values
-5. **Records** - Underlying data structure storing encrypted information with metadata
-6. **Encryption** - AES-256-GCM encryption with optional password-based protection using PBKDF2
-7. **Soft Delete** - Logical deletion mechanism with recovery capability
+4. **MetaInterface** - Interface for vault metadata operations (password identities, settings)
+5. **Tokens** - Unique identifiers providing secure access to stored encrypted values
+6. **Records** - Underlying data structure storing encrypted information with metadata
+7. **Password Identity** - Metadata-based password tracking for optimized bulk operations
+8. **Encryption** - AES-256-GCM encryption with Argon2id key derivation (configurable via CryptoConfig)
+9. **Soft Delete** - Logical deletion mechanism with recovery capability
+10. **Bulk Rekey** - Efficient password rotation using identity-based metadata
 
 ## Common Patterns
 
@@ -73,38 +85,46 @@ Defines `StoreInterface`, `RecordInterface`, and `RecordQueryInterface` - the fo
 
 ### Store Implementation (`store_*.go`)
 - `store_new.go` - Factory function for creating store instances
+- `store_new_options.go` - NewStoreOptions struct with CryptoConfig and PasswordIdentityEnabled
 - `store_implementation.go` - Core store logic and database operations
 - `store_record_methods.go` - Record CRUD operations
 - `store_token_methods.go` - Token lifecycle management
 - `store_record_query.go` - Query execution and SQL generation
+- `store_bulk_rekey_methods.go` - Bulk rekey operations
+- `store_password_identity_methods.go` - Password identity management
 
-### Encryption (`encdec*.go`)
-- `encdec.go` - Main encryption/decryption functions using AES-256-GCM
+### Encryption (`encdec*.go`, `constants.go`)
+- `encdec.go` - Main encryption/decryption functions using AES-256-GCM with Argon2id
+- `constants.go` - Constants including CryptoConfig and encryption parameters
 - `encdec_test.go` - Encryption functionality tests
 - `encdec_v2_test.go` - Enhanced encryption tests
 
-### Models (`gorm_model.go`)
-GORM database models defining the vault table structure and relationships
+### Metadata (`meta_*.go`)
+- `meta_implementation.go` - Metadata operations implementation
+- `meta_helpers.go` - Metadata helper functions
+- `gorm_model.go` - GORM models including VaultMeta
 
-### Token Validation (`is_token.go`)
-Token format validation and generation utilities
-
-### SQL Queries (`sqls.go`)
-Predefined SQL queries and database operations
+### Interfaces (`interfaces.go`)
+Defines `StoreInterface`, `RecordInterface`, `RecordQueryInterface`, and `MetaInterface` - the foundation of the entire system
 
 ## Key APIs
 
 ### Store Creation
+
 ```go
 vault, err := vaultstore.NewStore(vaultstore.NewStoreOptions{
-    VaultTableName:     "vault",
-    DB:                 db,
-    AutomigrateEnabled: true,
-    DebugEnabled:       false,
+    VaultTableName:          "vault",
+    VaultMetaTableName:      "vault_meta",
+    DB:                      db,
+    AutomigrateEnabled:      true,
+    DebugEnabled:            false,
+    PasswordIdentityEnabled: true,              // Enable for bulk rekey optimization
+    CryptoConfig:            vaultstore.DefaultCryptoConfig(), // Or HighSecurityCryptoConfig(), LightweightCryptoConfig()
 })
 ```
 
 ### Token Operations
+
 ```go
 // Create token
 token, err := vault.TokenCreate(ctx, "value", "password", 32)
@@ -117,6 +137,12 @@ err = vault.TokenUpdate(ctx, token, "new_value", "password")
 
 // Delete token
 err = vault.TokenDelete(ctx, token)
+
+// Bulk rekey (with identity management enabled)
+count, err := vault.BulkRekey(ctx, "oldpass", "newpass")
+
+// Migrate records to use identity management
+count, err := vault.MigrateRecordLinks(ctx, "password")
 ```
 
 ### Query Operations
@@ -145,13 +171,42 @@ The vault table stores encrypted data with the following structure (database-agn
 
 **Note**: The schema is database-agnostic and compatible with SQLite, PostgreSQL, and MySQL through GORM.
 
+### Metadata Table (vault_meta)
+
+Stores password identities and vault settings:
+- `id` (INTEGER PRIMARY KEY) - Unique metadata ID
+- `object_type` (TEXT NOT NULL) - 'password_identity', 'record', or 'vault'
+- `object_id` (TEXT NOT NULL) - Unique object identifier
+- `meta_key` (TEXT NOT NULL) - Key for the metadata value
+- `meta_value` (TEXT) - The metadata value
+- `created_at` (TEXT NOT NULL) - Creation timestamp
+- `updated_at` (TEXT NOT NULL) - Last update timestamp
+
 ## Security Implementation
 
 1. **Encryption** - AES-256-GCM provides authenticated encryption
-2. **Key Derivation** - PBKDF2 with 100,000 iterations for password-based keys
+2. **Key Derivation** - Argon2id with configurable parameters (CryptoConfig)
 3. **Random Generation** - crypto/rand for tokens, salts, and nonces
 4. **Authentication** - Built-in integrity checking via GCM authentication tags
 5. **Token Security** - Cryptographically secure random token generation
+6. **Password Hashing** - Bcrypt or Argon2id for password identity verification
+
+## Configuration Options
+
+Store configuration includes:
+- `VaultTableName` - Database table name for vault records (required)
+- `VaultMetaTableName` - Database table name for metadata (required for identity features)
+- `DB` - Database connection (required)
+- `AutomigrateEnabled` - Automatic schema migration (optional)
+- `DebugEnabled` - Debug logging (optional)
+- `DbDriverName` - Database driver specification (optional)
+- `CryptoConfig` - Custom cryptographic parameters (optional)
+- `PasswordIdentityEnabled` - Enable identity-based password management (optional)
+
+## Changelog
+
+- **v1.1.0** (2026-02-03): Added identity-based password management, CryptoConfig, metadata table, and BulkRekey documentation.
+- **v1.0.0** (2026-02-03): Initial LLM context documentation
 
 ## Error Handling
 

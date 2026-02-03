@@ -1,11 +1,11 @@
 ---
 path: modules/token_operations.md
 page-type: module
-summary: Token lifecycle management and secure access operations.
-tags: [module, token, operations, security]
+summary: Token lifecycle management and secure access operations including BulkRekey functionality.
+tags: [module, token, operations, security, bulk-rekey]
 created: 2026-02-03
 updated: 2026-02-03
-version: 1.0.0
+version: 1.1.0
 ---
 
 # Token Operations Module
@@ -429,6 +429,60 @@ func validateSession(vault StoreInterface, token string) (string, error) {
 }
 ```
 
+## Bulk Password Changes
+
+### BulkRekey
+
+Changes the password for all tokens encrypted with a specific password. This is useful for password rotation scenarios.
+
+```go
+func (s *storeImplementation) BulkRekey(ctx context.Context, oldPassword, newPassword string) (int, error)
+```
+
+**Parameters:**
+- `ctx context.Context`: Context for the operation
+- `oldPassword string`: Current password used for encryption
+- `newPassword string`: New password for re-encryption
+
+**Returns:**
+- `int`: Number of tokens re-encrypted
+- `error`: Error if operation fails
+
+**Performance:**
+
+| Mode | Complexity | Description |
+|------|------------|-------------|
+| **With Identity** | O(1) | Direct metadata lookup (fast) |
+| **Without Identity** | O(n) | Scan all records (slow) |
+
+**Example:**
+
+```go
+// Rekey all tokens using "oldpass" to use "newpass"
+count, err := vault.BulkRekey(ctx, "oldpass", "newpass")
+if err != nil {
+    log.Fatal(err)
+}
+fmt.Printf("Re-encrypted %d tokens\n", count)
+```
+
+**With Password Identity Management:**
+
+```go
+// Enable identity management for fast bulk rekey
+vault, err := vaultstore.NewStore(vaultstore.NewStoreOptions{
+    VaultTableName:          "vault",
+    VaultMetaTableName:      "vault_meta",
+    DB:                      db,
+    PasswordIdentityEnabled: true,  // Enable for O(1) rekey
+})
+
+// Fast bulk rekey - only touches relevant records
+count, err := vault.BulkRekey(ctx, "oldpass", "newpass")
+```
+
+See [Password Identity Management](password_identity_management.md) for more details.
+
 ## Performance Optimization
 
 ### Batch Operations
@@ -621,3 +675,9 @@ func TestTokenSecurity(t *testing.T) {
 - [Record Management](record_management.md) - Record operations
 - [Encryption](encryption.md) - Encryption and decryption
 - [API Reference](../api_reference.md) - Complete API documentation
+- [Password Identity Management](password_identity_management.md) - Identity-based password management
+
+## Changelog
+
+- **v1.1.0** (2026-02-03): Added BulkRekey documentation and password identity management references.
+- **v1.0.0** (2026-02-03): Initial token operations documentation

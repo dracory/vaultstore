@@ -8,6 +8,17 @@ This directory contains comprehensive documentation for the VaultStore library, 
 - [Usage Guide](usage_guide.md): Examples and instructions for using VaultStore in your applications.
 - [Technical Reference](technical_reference.md): Detailed technical information about the implementation.
 - [Data Stores](data_stores.md): Information about the data store layer, including entities and store interfaces.
+- [Query Interface](query_interface.md): Documentation for the query interface.
+- [Security](security.md): Security overview and recommendations.
+
+## LiveWiki Documentation
+
+For more detailed and interactive documentation, see the [LiveWiki](livewiki/) directory which includes:
+
+- [Configuration](livewiki/configuration.md): Detailed configuration options including CryptoConfig
+- [API Reference](livewiki/api_reference.md): Complete API reference
+- [Architecture](livewiki/architecture.md): System architecture and design patterns
+- [Modules](livewiki/modules/): Module-specific documentation including Password Identity Management
 
 ## Getting Started
 

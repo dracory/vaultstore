@@ -17,6 +17,20 @@ The table has the following columns:
 | updated_at | DateTime | Timestamp when the record was last updated |
 | soft_deleted_at | DateTime | Timestamp when the record was soft deleted (MAX_DATE if not deleted) |
 
+### Metadata Table
+
+When `PasswordIdentityEnabled` is true, a metadata table is used to track password identities:
+
+| Column | Type | Description |
+|--------|------|-------------|
+| id | Integer | Primary key, auto-increment |
+| object_type | String | Type: 'password_identity', 'record', or 'vault' |
+| object_id | String | Unique identifier for the object |
+| meta_key | String | Key for the metadata entry |
+| meta_value | String | Value of the metadata entry |
+| created_at | DateTime | Timestamp when the entry was created |
+| updated_at | DateTime | Timestamp when the entry was last updated |
+
 ## Record Structure
 
 The `Record` struct is defined as follows:
@@ -61,11 +75,14 @@ The store is initialized with the `NewStore` function, which takes a `NewStoreOp
 
 ```go
 type NewStoreOptions struct {
-    VaultTableName     string
-    DB                 *sql.DB
-    DbDriverName       string
-    AutomigrateEnabled bool
-    DebugEnabled       bool
+    VaultTableName          string
+    VaultMetaTableName      string
+    DB                      *sql.DB
+    DbDriverName            string
+    AutomigrateEnabled      bool
+    DebugEnabled            bool
+    CryptoConfig            *CryptoConfig
+    PasswordIdentityEnabled bool
 }
 ```
 
@@ -75,12 +92,27 @@ If `AutomigrateEnabled` is set to `true`, the store will automatically create th
 
 ### Encryption and Decryption
 
-VaultStore uses password-based encryption to protect secret values. The encryption and decryption functions are defined in `encdec.go`.
+VaultStore uses **AES-256-GCM** encryption with **Argon2id** key derivation for protecting secret values. The encryption is password-based, meaning you need the correct password to decrypt and access the secret value.
+
+### CryptoConfig
+
+You can configure the cryptographic parameters via `CryptoConfig`:
+
+```go
+// Default configuration (balanced)
+CryptoConfig: vaultstore.DefaultCryptoConfig()
+
+// High security configuration
+CryptoConfig: vaultstore.HighSecurityCryptoConfig()
+
+// Lightweight configuration (resource-constrained)
+CryptoConfig: vaultstore.LightweightCryptoConfig()
+```
 
 The `encode` function encrypts a value with a password:
 
 ```go
-func encode(value string, password string) string
+func encode(value string, password string) (string, error)
 ```
 
 The `decode` function decrypts a value with a password:

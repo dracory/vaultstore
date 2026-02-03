@@ -1,11 +1,11 @@
 ---
 path: api_reference.md
 page-type: reference
-summary: Complete API reference for VaultStore interfaces and methods.
-tags: [api, reference, interfaces, methods]
+summary: Complete API reference for VaultStore interfaces and methods including identity-based password management.
+tags: [api, reference, interfaces, methods, bulk-rekey, identity]
 created: 2026-02-03
 updated: 2026-02-03
-version: 1.0.0
+version: 1.1.0
 ---
 
 # API Reference
@@ -26,6 +26,7 @@ AutoMigrate() error
 EnableDebug(debug bool)
 GetDbDriverName() string
 GetVaultTableName() string
+GetMetaTableName() string
 
 // Record Operations
 RecordCount(ctx context.Context, query RecordQueryInterface) (int64, error)
@@ -52,6 +53,18 @@ TokensExpiredDelete(ctx context.Context) (count int64, err error)
 TokenSoftDelete(ctx context.Context, token string) error
 TokenUpdate(ctx context.Context, token string, value string, password string) error
 TokensRead(ctx context.Context, tokens []string, password string) (map[string]string, error)
+
+// Identity-based Password Management
+BulkRekey(ctx context.Context, oldPassword, newPassword string) (int, error)
+MigrateRecordLinks(ctx context.Context, password string) (int, error)
+
+// Vault Settings
+GetVaultVersion(ctx context.Context) (string, error)
+SetVaultVersion(ctx context.Context, version string) error
+IsVaultMigrated(ctx context.Context) (bool, error)
+MarkVaultMigrated(ctx context.Context) error
+GetVaultSetting(ctx context.Context, key string) (string, error)
+SetVaultSetting(ctx context.Context, key, value string) error
 ```
 
 ### RecordInterface
@@ -483,6 +496,146 @@ Encryption errors occur during cryptographic operations:
 - Invalid password
 - Corrupted encrypted data
 - Encryption algorithm failures
+
+## Identity-Based Password Management
+
+### BulkRekey
+
+Changes the password for all records encrypted with a specific password. When PasswordIdentityEnabled is true, this operation is optimized using metadata lookups.
+
+```go
+func (s *storeImplementation) BulkRekey(ctx context.Context, oldPassword, newPassword string) (int, error)
+```
+
+#### Parameters
+
+- `ctx context.Context`: Context for the operation
+- `oldPassword string`: Current password used for encryption
+- `newPassword string`: New password to use for re-encryption
+
+#### Returns
+
+- `int`: Number of records re-encrypted
+- `error`: Error if operation fails
+
+#### Behavior
+
+**With PasswordIdentityEnabled (Fast Path):**
+1. Find password identity for oldPassword in metadata
+2. Query all records linked to this identity
+3. Decrypt and re-encrypt only linked records
+4. Update identity to use newPassword hash
+
+**Without PasswordIdentityEnabled (Scan Path):**
+1. Iterate through all records in vault
+2. Attempt decryption with oldPassword
+3. Re-encrypt successful decryptions with newPassword
+4. Update records (slower for large vaults)
+
+#### Example
+
+```go
+// Rekey all records using "oldpass" to use "newpass"
+count, err := vault.BulkRekey(ctx, "oldpass", "newpass")
+if err != nil {
+    log.Fatal(err)
+}
+fmt.Printf("Re-encrypted %d records\n", count)
+```
+
+### MigrateRecordLinks
+
+Migrates existing records to use password identity management. Creates metadata links between records and their password identities.
+
+```go
+func (s *storeImplementation) MigrateRecordLinks(ctx context.Context, password string) (int, error)
+```
+
+#### Parameters
+
+- `ctx context.Context`: Context for the operation
+- `password string`: Password to use for identifying records to migrate
+
+#### Returns
+
+- `int`: Number of records migrated
+- `error`: Error if operation fails
+
+#### Example
+
+```go
+// Migrate all records that use "mypassword"
+count, err := vault.MigrateRecordLinks(ctx, "mypassword")
+if err != nil {
+    log.Fatal(err)
+}
+fmt.Printf("Migrated %d records to use identity management\n", count)
+```
+
+## Vault Settings
+
+### GetVaultVersion
+
+Retrieves the current vault version from metadata.
+
+```go
+func (s *storeImplementation) GetVaultVersion(ctx context.Context) (string, error)
+```
+
+Returns the vault version string (e.g., "0.30.0") or empty string if not set.
+
+### SetVaultVersion
+
+Sets the vault version in metadata.
+
+```go
+func (s *storeImplementation) SetVaultVersion(ctx context.Context, version string) error
+```
+
+Used to track vault state for migration purposes.
+
+### IsVaultMigrated
+
+Checks if the vault has been fully migrated to use identity management.
+
+```go
+func (s *storeImplementation) IsVaultMigrated(ctx context.Context) (bool, error)
+```
+
+Returns true if vault version indicates full migration.
+
+### MarkVaultMigrated
+
+Marks the vault as fully migrated.
+
+```go
+func (s *storeImplementation) MarkVaultMigrated(ctx context.Context) error
+```
+
+Updates vault version to indicate all records use identity management.
+
+### GetVaultSetting
+
+Retrieves a custom vault setting by key.
+
+```go
+func (s *storeImplementation) GetVaultSetting(ctx context.Context, key string) (string, error)
+```
+
+### SetVaultSetting
+
+Sets a custom vault setting.
+
+```go
+func (s *storeImplementation) SetVaultSetting(ctx context.Context, key, value string) error
+```
+
+Allows storing arbitrary key-value pairs in vault metadata.
+
+## Changelog
+
+- **v1.1.0** (2026-02-03): Added documentation for identity-based password management (BulkRekey, MigrateRecordLinks) and vault settings methods.
+- **v1.0.0** (2026-02-03): Initial API reference documentation
 
 ## See Also
 

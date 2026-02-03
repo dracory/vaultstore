@@ -11,6 +11,7 @@
   - **[Core Store](modules/core_store.md)**
   - **[Record Management](modules/record_management.md)**
   - **[Token Operations](modules/token_operations.md)**
+  - **[Password Identity Management](modules/password_identity_management.md)**
   - **[Encryption](modules/encryption.md)**
   - **[Query Interface](modules/query_interface.md)**
 - **[LLM Context](llm-context.md)**

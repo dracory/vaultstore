@@ -1,11 +1,11 @@
 ---
 path: overview.md
 page-type: overview
-summary: High-level overview of VaultStore - a secure value storage library for Go.
-tags: [overview, introduction, vaultstore]
+summary: High-level overview of VaultStore - a secure value storage library for Go with identity-based password management.
+tags: [overview, introduction, vaultstore, identity, cryptoconfig]
 created: 2026-02-03
 updated: 2026-02-03
-version: 1.0.0
+version: 1.1.0
 ---
 
 # VaultStore Overview
@@ -20,14 +20,16 @@ VaultStore is meant to be integrated into your application as a library, providi
 
 ## Key Features
 
-- **Secure storage** of sensitive data with encryption
+- **Secure storage** of sensitive data with AES-256-GCM encryption
 - **Token-based access** to secrets for secure retrieval
-- **Password protection** for stored values
+- **Password protection** for stored values with Argon2id key derivation
+- **Identity-based password management** for optimized bulk rekey operations
 - **Flexible query interface** for retrieving records
 - **Soft delete functionality** for data recovery
-- **Support for multiple database backends**
+- **Support for multiple database backends** (SQLite, PostgreSQL, MySQL)
 - **Automatic database migration** support
 - **Expiration handling** for time-limited secrets
+- **Configurable cryptography** via CryptoConfig (Argon2id parameters)
 
 ## Architecture Overview
 
@@ -92,3 +94,9 @@ VaultStore is ideal for applications that need to:
 - [Architecture](architecture.md) - Detailed system design
 - [API Reference](api_reference.md) - Complete API documentation
 - [Modules](modules/) - Detailed module documentation
+- [Password Identity Management](modules/password_identity_management.md) - Identity-based password management
+
+## Changelog
+
+- **v1.1.0** (2026-02-03): Added documentation for identity-based password management, CryptoConfig, and updated technology stack details.
+- **v1.0.0** (2026-02-03): Initial overview documentation

@@ -1,11 +1,11 @@
 ---
 path: configuration.md
 page-type: reference
-summary: Configuration options, environment variables, and setup parameters.
-tags: [configuration, setup, options, environment]
+summary: Configuration options, environment variables, and setup parameters including CryptoConfig and Password Identity settings.
+tags: [configuration, setup, options, environment, cryptoconfig, password-identity]
 created: 2026-02-03
 updated: 2026-02-03
-version: 1.0.0
+version: 1.1.0
 ---
 
 # Configuration
@@ -23,8 +23,14 @@ type NewStoreOptions struct {
     // Required: Name of the vault table in the database
     VaultTableName string
     
+    // Required: Name of the vault metadata table
+    VaultMetaTableName string
+    
     // Required: Database connection
     DB *sql.DB
+    
+    // Optional: Database driver name (auto-detected if not provided)
+    DbDriverName string
     
     // Optional: Enable automatic database migration (default: false)
     AutomigrateEnabled bool
@@ -76,6 +82,24 @@ db, err := sql.Open("mysql", "user:pass@tcp(localhost:3306)/db")
 - Should have appropriate permissions for table operations
 - Connection pooling should be configured appropriately
 
+#### VaultMetaTableName
+
+The name of the metadata table for vault operations. This table stores password identity information and vault settings when PasswordIdentityEnabled is true.
+
+```go
+// Example
+vault, err := vaultstore.NewStore(vaultstore.NewStoreOptions{
+    VaultTableName:     "app_vault",
+    VaultMetaTableName: "app_vault_meta",  // Metadata table name
+    DB:                 db,
+})
+```
+
+**Considerations:**
+- Must be a valid SQL table name
+- Should be different from VaultTableName
+- Used for password identity management and vault versioning
+
 ### Optional Parameters
 
 #### AutomigrateEnabled
@@ -113,6 +137,86 @@ vault, err := vaultstore.NewStore(vaultstore.NewStoreOptions{
 - Error stack traces
 - Performance metrics
 - Encryption/decryption operations
+
+#### CryptoConfig
+
+Custom cryptographic configuration for encryption operations. Allows tuning Argon2id and AES-GCM parameters.
+
+```go
+// Use default configuration
+vault, err := vaultstore.NewStore(vaultstore.NewStoreOptions{
+    VaultTableName: "vault",
+    DB:             db,
+    CryptoConfig:   vaultstore.DefaultCryptoConfig(),
+})
+
+// High security configuration
+vault, err := vaultstore.NewStore(vaultstore.NewStoreOptions{
+    VaultTableName: "vault",
+    DB:             db,
+    CryptoConfig:   vaultstore.HighSecurityCryptoConfig(),
+})
+
+// Lightweight configuration for resource-constrained environments
+vault, err := vaultstore.NewStore(vaultstore.NewStoreOptions{
+    VaultTableName: "vault",
+    DB:             db,
+    CryptoConfig:   vaultstore.LightweightCryptoConfig(),
+})
+```
+
+**Configuration Options:**
+
+```go
+type CryptoConfig struct {
+    // Argon2id parameters
+    Iterations  int  // Number of iterations (default: 3)
+    Memory      int  // Memory in bytes (default: 64MB)
+    Parallelism int  // Parallelism (default: 4)
+    KeyLength   int  // Key length in bytes (default: 32)
+
+    // AES-GCM parameters
+    SaltSize  int  // Salt size in bytes (default: 16)
+    NonceSize int  // Nonce size in bytes (default: 12)
+    TagSize   int  // Tag size in bytes (default: 16)
+}
+```
+
+**Pre-configured Profiles:**
+
+| Profile | Iterations | Memory | Use Case |
+|---------|-----------|--------|----------|
+| `DefaultCryptoConfig()` | 3 | 64MB | Balanced security and performance |
+| `HighSecurityCryptoConfig()` | 4 | 128MB | Maximum security requirements |
+| `LightweightCryptoConfig()` | 2 | 32MB | Resource-constrained environments |
+
+#### PasswordIdentityEnabled
+
+Enables identity-based password management for optimized bulk rekey operations. When enabled, the system tracks which records share the same password, allowing efficient bulk password changes.
+
+```go
+// Enable password identity management
+vault, err := vaultstore.NewStore(vaultstore.NewStoreOptions{
+    VaultTableName:          "vault",
+    VaultMetaTableName:      "vault_meta",
+    DB:                      db,
+    PasswordIdentityEnabled: true,  // Enable identity management
+})
+```
+
+**Benefits:**
+- **Fast Bulk Rekey**: O(1) password change vs O(n) scan-and-test
+- **Password Deduplication**: Automatically groups records by password
+- **Efficient Migration**: Metadata links enable quick re-encryption
+
+**Considerations:**
+- Requires VaultMetaTableName to be set
+- Metadata table stores password hash references (not actual passwords)
+- Slightly higher storage overhead for metadata
+- Recommended for applications with frequent bulk rekey operations
+
+**Migration:**
+Existing records can be migrated to use identity management via `MigrateRecordLinks()` method.
 
 #### DbDriverName
 
@@ -371,6 +475,19 @@ CREATE INDEX IF NOT EXISTS idx_vault_token ON vault(token);
 CREATE INDEX IF NOT EXISTS idx_vault_created_at ON vault(created_at);
 CREATE INDEX IF NOT EXISTS idx_vault_expires_at ON vault(expires_at);
 CREATE INDEX IF NOT EXISTS idx_vault_soft_deleted_at ON vault(soft_deleted_at);
+
+-- Metadata table for password identity management and vault settings
+CREATE TABLE IF NOT EXISTS vault_meta (
+    id           INTEGER PRIMARY KEY AUTOINCREMENT,
+    object_type  TEXT NOT NULL,
+    object_id    TEXT NOT NULL,
+    meta_key     TEXT NOT NULL,
+    meta_value   TEXT,
+    created_at   TEXT NOT NULL,
+    updated_at   TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_vault_meta_obj ON vault_meta(object_type, object_id, meta_key);
 ```
 
 ### PostgreSQL Schema
@@ -392,9 +509,20 @@ CREATE INDEX IF NOT EXISTS idx_vault_token ON vault(token);
 CREATE INDEX IF NOT EXISTS idx_vault_created_at ON vault(created_at);
 CREATE INDEX IF NOT EXISTS idx_vault_expires_at ON vault(expires_at);
 CREATE INDEX IF NOT EXISTS idx_vault_soft_deleted_at ON vault(soft_deleted_at);
-```
 
-### MySQL Schema
+-- Metadata table for password identity management and vault settings
+CREATE TABLE IF NOT EXISTS vault_meta (
+    id           SERIAL PRIMARY KEY,
+    object_type  VARCHAR(50) NOT NULL,
+    object_id    VARCHAR(64) NOT NULL,
+    meta_key     VARCHAR(50) NOT NULL,
+    meta_value   TEXT,
+    created_at   TIMESTAMP NOT NULL,
+    updated_at   TIMESTAMP NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_vault_meta_obj ON vault_meta(object_type, object_id, meta_key);
+```
 
 ```sql
 CREATE TABLE IF NOT EXISTS vault (
@@ -413,6 +541,19 @@ CREATE INDEX idx_vault_token ON vault(token);
 CREATE INDEX idx_vault_created_at ON vault(created_at);
 CREATE INDEX idx_vault_expires_at ON vault(expires_at);
 CREATE INDEX idx_vault_soft_deleted_at ON vault(soft_deleted_at);
+
+-- Metadata table for password identity management and vault settings
+CREATE TABLE IF NOT EXISTS vault_meta (
+    id           INT AUTO_INCREMENT PRIMARY KEY,
+    object_type  VARCHAR(50) NOT NULL,
+    object_id    VARCHAR(64) NOT NULL,
+    meta_key     VARCHAR(50) NOT NULL,
+    meta_value   TEXT,
+    created_at   DATETIME NOT NULL,
+    updated_at   DATETIME NOT NULL
+);
+
+CREATE INDEX idx_vault_meta_obj ON vault_meta(object_type, object_id, meta_key);
 ```
 
 ## Performance Tuning
@@ -497,3 +638,10 @@ func (sv *SecureVault) TokenCreate(ctx context.Context, value, password string, 
 - [Architecture](architecture.md) - System design overview
 - [API Reference](api_reference.md) - Complete API documentation
 - [Database Setup](../data_stores.md) - Database-specific information
+- [Password Identity Management](modules/password_identity_management.md) - Identity-based password management
+
+## Changelog
+
+- **v1.1.0** (2026-02-03): Added documentation for CryptoConfig, PasswordIdentityEnabled, and VaultMetaTableName options. Added vault_meta table schema for all databases.
+- **v1.0.0** (2026-02-03): Initial configuration documentation
+
