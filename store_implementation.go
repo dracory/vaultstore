@@ -11,15 +11,15 @@ import (
 
 // Store defines a session store
 type storeImplementation struct {
-	vaultTableName          string
-	vaultMetaTableName      string
-	db                      *sql.DB
-	gormDB                  *gorm.DB
-	dbDriverName            string
-	automigrateEnabled      bool
-	debugEnabled            bool
-	cryptoConfig            *CryptoConfig
-	passwordIdentityEnabled bool
+	vaultTableName     string
+	vaultMetaTableName string
+	db                 *sql.DB
+	gormDB             *gorm.DB
+	dbDriverName       string
+	automigrateEnabled bool
+	debugEnabled       bool
+	cryptoConfig       *CryptoConfig
+	parallelThreshold  int // Configurable threshold for parallel processing (0 = use default)
 }
 
 var _ StoreInterface = (*storeImplementation)(nil) // verify it extends the interface

@@ -115,8 +115,16 @@ func decodeV2(value string, password string) (string, error) {
 	return string(plaintext), nil
 }
 
+// encode encrypts a value using the current encryption version (v2 - AES-GCM with Argon2id)
+// This function serves as the main entry point for encryption and always uses
+// the latest secure encryption method. Legacy encryption (v1) is only supported
+// for decryption via decode() to maintain backward compatibility with old data.
+//
+// Encryption versions:
+//   - v1 (deprecated): XOR encryption with MD5/SHA1 key derivation (insecure, for decryption only)
+//   - v2 (current): AES-GCM with Argon2id key derivation (secure, used for all new data)
 func encode(value string, password string) (string, error) {
-	// Always use v2 encryption for new data
+	// Always use v2 encryption for new data to ensure maximum security
 	return encodeV2(value, password)
 }
 

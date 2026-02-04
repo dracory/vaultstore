@@ -131,13 +131,8 @@ type StoreInterface interface {
 
 	// Identity-based password management
 	BulkRekey(ctx context.Context, oldPassword, newPassword string) (int, error)
-	MigrateRecordLinks(ctx context.Context, password string) (int, error)
 
 	// Vault settings
-	GetVaultVersion(ctx context.Context) (string, error)
-	SetVaultVersion(ctx context.Context, version string) error
-	IsVaultMigrated(ctx context.Context) (bool, error)
-	MarkVaultMigrated(ctx context.Context) error
 	GetVaultSetting(ctx context.Context, key string) (string, error)
 	SetVaultSetting(ctx context.Context, key, value string) error
 }

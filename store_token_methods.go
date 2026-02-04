@@ -10,7 +10,6 @@ import (
 	"github.com/dracory/sb"
 	"github.com/dromara/carbon/v2"
 	"github.com/samber/lo"
-	"gorm.io/gorm"
 )
 
 // ErrTokenExpired is returned when a token has expired
@@ -63,19 +62,6 @@ func (store *storeImplementation) TokenCreate(ctx context.Context, data string, 
 			continue // Try again
 		}
 
-		// Link record to password identity only if the feature is enabled
-		if store.passwordIdentityEnabled {
-			passwordID, err := store.findOrCreateIdentity(ctx, password)
-			if err != nil {
-				return "", fmt.Errorf("failed to find or create identity: %w", err)
-			}
-
-			err = store.linkRecordToIdentity(ctx, newEntry.GetID(), passwordID)
-			if err != nil {
-				return "", fmt.Errorf("failed to link record to identity: %w", err)
-			}
-		}
-
 		return token, nil
 	}
 
@@ -116,19 +102,6 @@ func (store *storeImplementation) TokenCreateCustom(ctx context.Context, token s
 	err = store.RecordCreate(ctx, newEntry)
 	if err != nil {
 		return err
-	}
-
-	// Link record to password identity only if the feature is enabled
-	if store.passwordIdentityEnabled {
-		passwordID, err := store.findOrCreateIdentity(ctx, password)
-		if err != nil {
-			return fmt.Errorf("failed to find or create identity: %w", err)
-		}
-
-		err = store.linkRecordToIdentity(ctx, newEntry.GetID(), passwordID)
-		if err != nil {
-			return fmt.Errorf("failed to link record to identity: %w", err)
-		}
 	}
 
 	return nil
@@ -217,37 +190,6 @@ func (store *storeImplementation) TokenRead(ctx context.Context, token string, p
 
 	if err != nil {
 		return "", err
-	}
-
-	// On-access migration: Check if record is linked to a password identity
-	// Only if password identity feature is enabled
-	// If not, link it now (this handles records created before identity-based management)
-	if store.passwordIdentityEnabled {
-		existingPassID, _ := store.getRecordPasswordID(ctx, entry.GetID())
-		if existingPassID == "" {
-			// Record not linked yet, create the link within a transaction
-			err = store.gormDB.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-				// Create identity within transaction
-				passwordID, identityErr := store.findOrCreateIdentity(ctx, password)
-				if identityErr != nil {
-					return fmt.Errorf("unable to create identity for record %s: %w", entry.GetID(), identityErr)
-				}
-
-				// Link record to identity within same transaction
-				linkErr := store.linkRecordToIdentity(ctx, entry.GetID(), passwordID)
-				if linkErr != nil {
-					return fmt.Errorf("unable to link record %s to identity %s: %w", entry.GetID(), passwordID, linkErr)
-				}
-
-				return nil
-			})
-
-			if err != nil {
-				// Transaction failed - this is a data consistency issue
-				// Return error to signal the problem to the caller
-				return "", fmt.Errorf("migration transaction failed for record %s: %w", entry.GetID(), err)
-			}
-		}
 	}
 
 	return decoded, nil
@@ -392,19 +334,6 @@ func (store *storeImplementation) TokenUpdate(ctx context.Context, token string,
 	err = store.RecordUpdate(ctx, entry)
 	if err != nil {
 		return err
-	}
-
-	// Link record to password identity only if the feature is enabled
-	if store.passwordIdentityEnabled {
-		passwordID, err := store.findOrCreateIdentity(ctx, password)
-		if err != nil {
-			return fmt.Errorf("failed to find or create identity: %w", err)
-		}
-
-		err = store.linkRecordToIdentity(ctx, entry.GetID(), passwordID)
-		if err != nil {
-			return fmt.Errorf("failed to link record to identity: %w", err)
-		}
 	}
 
 	return nil

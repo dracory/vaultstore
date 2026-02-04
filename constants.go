@@ -61,9 +61,7 @@ const (
 
 // Vault settings constants
 const (
-	VAULT_SETTINGS_ID             = "settings"
-	VAULT_VERSION_DEFAULT         = "0.29.0"
-	VAULT_VERSION_WITH_IDENTITIES = "0.30.0"
+	VAULT_SETTINGS_ID = "settings"
 )
 
 // Encryption version constants for versioned encryption
