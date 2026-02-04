@@ -26,7 +26,7 @@ version: 1.1.0
 - **[Core Store](modules/core_store.md)** - Main store implementation and interfaces
 - **[Record Management](modules/record_management.md)** - Record CRUD operations
 - **[Token Operations](modules/token_operations.md)** - Token-based access methods
-- **[Bulk Rekey](modules/bulk_rekey.md)** - Pure encryption bulk rekey operations
+- **[Tokens Change Password](modules/tokens_change_password.md)** - Token password change operations
 - **[Encryption](modules/encryption.md)** - Encryption and decryption utilities
 - **[Query Interface](modules/query_interface.md)** - Flexible query system
 

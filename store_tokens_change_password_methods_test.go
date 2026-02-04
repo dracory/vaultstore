@@ -25,7 +25,7 @@ func setupTestStoreForRekey(t *testing.T) *storeImplementation {
 	return store
 }
 
-func TestBulkRekey(t *testing.T) {
+func TestTokensChangePassword(t *testing.T) {
 	store := setupTestStoreForRekey(t)
 	ctx := context.Background()
 
@@ -43,7 +43,7 @@ func TestBulkRekey(t *testing.T) {
 	}
 
 	// Perform bulk rekey
-	count, err := store.BulkRekey(ctx, oldPassword, newPassword)
+	count, err := store.TokensChangePassword(ctx, oldPassword, newPassword)
 	if err != nil {
 		t.Fatalf("bulk rekey failed: %v", err)
 	}
@@ -69,28 +69,28 @@ func TestBulkRekey(t *testing.T) {
 	}
 }
 
-func TestBulkRekey_EmptyPasswords(t *testing.T) {
+func TestTokensChangePassword_EmptyPasswords(t *testing.T) {
 	store := setupTestStoreForRekey(t)
 	ctx := context.Background()
 
-	_, err := store.BulkRekey(ctx, "", "new-password")
+	_, err := store.TokensChangePassword(ctx, "", "new-password")
 	if err == nil {
 		t.Error("expected error for empty old password")
 	}
 
-	_, err = store.BulkRekey(ctx, "old-password", "")
+	_, err = store.TokensChangePassword(ctx, "old-password", "")
 	if err == nil {
 		t.Error("expected error for empty new password")
 	}
 }
 
-func TestBulkRekey_NoMatchingRecords(t *testing.T) {
+func TestTokensChangePassword_NoMatchingRecords(t *testing.T) {
 	store := setupTestStoreForRekey(t)
 	ctx := context.Background()
 
 	// Don't create any records, just try to rekey
 	// With pure encryption, this returns 0, nil (not an error)
-	count, err := store.BulkRekey(ctx, "non-existent-password", "new-password")
+	count, err := store.TokensChangePassword(ctx, "non-existent-password", "new-password")
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
 	}
@@ -100,12 +100,12 @@ func TestBulkRekey_NoMatchingRecords(t *testing.T) {
 	}
 }
 
-func TestBulkRekey_NoRecords(t *testing.T) {
+func TestTokensChangePassword_NoRecords(t *testing.T) {
 	store := setupTestStoreForRekey(t)
 	ctx := context.Background()
 
 	// Empty store - should return 0, nil
-	count, err := store.BulkRekey(ctx, "old-password", "new-password")
+	count, err := store.TokensChangePassword(ctx, "old-password", "new-password")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -115,7 +115,7 @@ func TestBulkRekey_NoRecords(t *testing.T) {
 	}
 }
 
-func TestBulkRekey_MixedPasswords(t *testing.T) {
+func TestTokensChangePassword_MixedPasswords(t *testing.T) {
 	store := setupTestStoreForRekey(t)
 	ctx := context.Background()
 
@@ -144,7 +144,7 @@ func TestBulkRekey_MixedPasswords(t *testing.T) {
 	}
 
 	// Perform bulk rekey - should only rekey records with old password
-	count, err := store.BulkRekey(ctx, oldPassword, newPassword)
+	count, err := store.TokensChangePassword(ctx, oldPassword, newPassword)
 	if err != nil {
 		t.Fatalf("bulk rekey failed: %v", err)
 	}
@@ -170,7 +170,7 @@ func TestBulkRekey_MixedPasswords(t *testing.T) {
 	}
 }
 
-func TestBulkRekey_SequentialVsParallel(t *testing.T) {
+func TestTokensChangePassword_SequentialVsParallel(t *testing.T) {
 	store := setupTestStoreForRekey(t)
 	ctx := context.Background()
 
@@ -188,7 +188,7 @@ func TestBulkRekey_SequentialVsParallel(t *testing.T) {
 	}
 
 	// Perform bulk rekey (should use sequential processing)
-	count, err := store.BulkRekey(ctx, oldPassword, newPassword)
+	count, err := store.TokensChangePassword(ctx, oldPassword, newPassword)
 	if err != nil {
 		t.Fatalf("bulk rekey failed: %v", err)
 	}
@@ -206,7 +206,7 @@ func TestBulkRekey_SequentialVsParallel(t *testing.T) {
 	}
 }
 
-func TestBulkRekey_ParallelPath(t *testing.T) {
+func TestTokensChangePassword_ParallelPath(t *testing.T) {
 	db, err := initDB()
 	if err != nil {
 		t.Fatalf("initDB: Expected [err] to be nil received [%v]", err.Error())
@@ -239,7 +239,7 @@ func TestBulkRekey_ParallelPath(t *testing.T) {
 	}
 
 	// Perform bulk rekey (should use parallel processing due to low threshold)
-	count, err := store.BulkRekey(ctx, oldPassword, newPassword)
+	count, err := store.TokensChangePassword(ctx, oldPassword, newPassword)
 	if err != nil {
 		t.Fatalf("bulk rekey failed: %v", err)
 	}
@@ -265,8 +265,8 @@ func TestBulkRekey_ParallelPath(t *testing.T) {
 	}
 }
 
-// TestBulkRekey_ContextCancellation tests context cancellation during processing
-func TestBulkRekey_ContextCancellation(t *testing.T) {
+// TestTokensChangePassword_ContextCancellation tests context cancellation during processing
+func TestTokensChangePassword_ContextCancellation(t *testing.T) {
 	store := setupTestStoreForRekey(t)
 
 	oldPassword := "old-password-123"
@@ -288,7 +288,7 @@ func TestBulkRekey_ContextCancellation(t *testing.T) {
 	cancel()
 
 	// Perform bulk rekey with cancelled context
-	count, err := store.BulkRekey(ctx, oldPassword, newPassword)
+	count, err := store.TokensChangePassword(ctx, oldPassword, newPassword)
 
 	// Should return partial count and context error
 	if err == nil {

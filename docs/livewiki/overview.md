@@ -94,10 +94,11 @@ VaultStore is ideal for applications that need to:
 - [Architecture](architecture.md) - Detailed system design
 - [API Reference](api_reference.md) - Complete API documentation
 - [Modules](modules/) - Detailed module documentation
-- [Bulk Rekey](modules/bulk_rekey.md) - Pure encryption bulk rekey operations
+- [Tokens Change Password](modules/tokens_change_password.md) - Token password change operations
 
 ## Changelog
 
+- **v1.3.0** (2026-02-04): Renamed BulkRekey to TokensChangePassword for better API consistency
 - **v1.2.0** (2026-02-04): Removed identity-based password management, added pure encryption bulk rekey documentation
 - **v1.1.0** (2026-02-03): Added documentation for identity-based password management, CryptoConfig, and updated technology stack details.
 - **v1.0.0** (2026-02-03): Initial overview documentation

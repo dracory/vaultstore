@@ -498,12 +498,12 @@ Encryption errors occur during cryptographic operations:
 
 ## Pure Encryption Bulk Rekey
 
-### BulkRekey
+### TokensChangePassword
 
-Changes the password for all records encrypted with a specific password using pure encryption scan-and-test approach. No password metadata is stored, providing maximum security against correlation attacks.
+Changes the password for all tokens encrypted with a specific password using pure encryption scan-and-test approach. No password metadata is stored, providing maximum security against correlation attacks.
 
 ```go
-func (s *storeImplementation) BulkRekey(ctx context.Context, oldPassword, newPassword string) (int, error)
+func (s *storeImplementation) TokensChangePassword(ctx context.Context, oldPassword, newPassword string) (int, error)
 ```
 
 #### Parameters
@@ -514,7 +514,7 @@ func (s *storeImplementation) BulkRekey(ctx context.Context, oldPassword, newPas
 
 #### Returns
 
-- `int`: Number of records re-encrypted
+- `int`: Number of tokens whose password was changed
 - `error`: Error if operation fails (returns partial count with wrapped error on cancellation)
 
 #### Behavior
@@ -537,19 +537,19 @@ func (s *storeImplementation) BulkRekey(ctx context.Context, oldPassword, newPas
 #### Example
 
 ```go
-// Rekey all records using "oldpass" to use "newpass"
+// Change password for all tokens using "oldpass" to use "newpass"
 ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 defer cancel()
 
-count, err := vault.BulkRekey(ctx, "oldpass", "newpass")
+count, err := vault.TokensChangePassword(ctx, "oldpass", "newpass")
 if err != nil {
     if errors.Is(err, context.DeadlineExceeded) {
-        fmt.Printf("Partial rekey completed: %d records\n", count)
+        fmt.Printf("Partial password change completed: %d tokens\n", count)
     } else {
         log.Fatal(err)
     }
 }
-fmt.Printf("Re-encrypted %d records\n", count)
+fmt.Printf("Changed password for %d tokens\n", count)
 ```
 
 ### ParallelThreshold Configuration
@@ -611,7 +611,8 @@ Allows storing arbitrary key-value pairs in vault metadata.
 
 ## Changelog
 
-- **v1.2.0** (2026-02-04): Removed identity-based password management methods (MigrateRecordLinks, IsVaultMigrated, MarkVaultMigrated). Updated BulkRekey documentation for pure encryption approach. Added ParallelThreshold configuration option.
+- **v1.3.0** (2026-02-04): Renamed BulkRekey to TokensChangePassword for better clarity and consistency with token-based API.
+- **v1.2.0** (2026-02-04): Removed identity-based password management methods (MigrateRecordLinks, IsVaultMigrated, MarkVaultMigrated). Updated TokensChangePassword documentation for pure encryption approach. Added ParallelThreshold configuration option.
 - **v1.1.0** (2026-02-03): Added documentation for identity-based password management (BulkRekey, MigrateRecordLinks) and vault settings methods.
 - **v1.0.0** (2026-02-03): Initial API reference documentation
 

@@ -129,8 +129,8 @@ type StoreInterface interface {
 	TokenUpdate(ctx context.Context, token string, value string, password string) error
 	TokensRead(ctx context.Context, tokens []string, password string) (map[string]string, error)
 
-	// Identity-based password management
-	BulkRekey(ctx context.Context, oldPassword, newPassword string) (int, error)
+	// Token-based password management
+	TokensChangePassword(ctx context.Context, oldPassword, newPassword string) (int, error)
 
 	// Vault settings
 	GetVaultSetting(ctx context.Context, key string) (string, error)

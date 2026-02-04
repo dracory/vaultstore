@@ -1,22 +1,22 @@
 ---
-path: modules/bulk_rekey.md
+path: modules/tokens_change_password.md
 page-type: module
-summary: Pure encryption bulk rekey operations with scan-and-test approach for maximum security.
-tags: [module, bulk-rekey, encryption, security, parallel-processing]
+summary: Token password change operations with scan-and-test approach for maximum security.
+tags: [module, tokens-change-password, encryption, security, parallel-processing]
 created: 2026-02-04
 updated: 2026-02-04
 version: 1.0.0
 ---
 
-# Bulk Rekey Module
+# Tokens Change Password Module
 
-The Bulk Rekey module provides secure password rotation for all records encrypted with a specific password. It uses a pure encryption scan-and-test approach that eliminates password metadata storage for maximum security.
+The Tokens Change Password module provides secure password rotation for all tokens encrypted with a specific password. It uses a pure encryption scan-and-test approach that eliminates password metadata storage for maximum security.
 
 ## Overview
 
 ### Security-First Design
 
-Unlike traditional approaches that store password hashes or identity metadata, VaultStore's bulk rekey uses pure encryption:
+Unlike traditional approaches that store password hashes or identity metadata, VaultStore's tokens change password uses pure encryption:
 
 - **Zero Metadata**: No password hashes, identity IDs, or relationship data stored
 - **Scan-and-Test**: Attempts decryption with old password to identify matching records
@@ -33,7 +33,7 @@ The module automatically selects the optimal processing strategy based on datase
 
 ## Usage
 
-### Basic Bulk Rekey
+### Basic Tokens Change Password
 
 ```go
 package main
@@ -59,13 +59,13 @@ func main() {
     
     ctx := context.Background()
     
-    // Rekey all records from "oldpassword" to "newpassword"
-    count, err := vault.BulkRekey(ctx, "oldpassword", "newpassword")
+    // Change password for all tokens from "oldpassword" to "newpassword"
+    count, err := vault.TokensChangePassword(ctx, "oldpassword", "newpassword")
     if err != nil {
-        log.Fatalf("Bulk rekey failed: %v", err)
+        log.Fatalf("Password change failed: %v", err)
     }
     
-    fmt.Printf("Successfully rekeyed %d records\n", count)
+    fmt.Printf("Successfully changed password for %d tokens\n", count)
 }
 ```
 
@@ -76,13 +76,13 @@ func main() {
 ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 defer cancel()
 
-count, err := vault.BulkRekey(ctx, "oldpassword", "newpassword")
+count, err := vault.TokensChangePassword(ctx, "oldpassword", "newpassword")
 if err != nil {
     if errors.Is(err, context.DeadlineExceeded) {
-        // Partial rekey completed - count shows progress
-        fmt.Printf("Partial rekey: %d records processed before timeout\n", count)
+        // Partial password change completed - count shows progress
+        fmt.Printf("Partial password change: %d tokens processed before timeout\n", count)
     } else {
-        log.Fatalf("Bulk rekey failed: %v", err)
+        log.Fatalf("Password change failed: %v", err)
     }
 }
 ```
@@ -103,7 +103,7 @@ vault, err := vaultstore.NewStore(vaultstore.NewStoreOptions{
 ### Algorithm
 
 ```go
-func BulkRekey(ctx context.Context, oldPassword, newPassword string) (int, error) {
+func TokensChangePassword(ctx context.Context, oldPassword, newPassword string) (int, error) {
     // 1. Validate inputs
     if oldPassword == "" || newPassword == "" {
         return 0, error("passwords cannot be empty")
@@ -115,7 +115,7 @@ func BulkRekey(ctx context.Context, oldPassword, newPassword string) (int, error
     // 3. Select strategy based on size
     if totalCount > maxRecordsInMemory {
         // Very large: Use cursor-based pagination
-        return bulkRekeyWithCursor(ctx, oldPassword, newPassword)
+        return tokensChangePasswordWithCursor(ctx, oldPassword, newPassword)
     }
     
     // 4. Load records
@@ -124,10 +124,10 @@ func BulkRekey(ctx context.Context, oldPassword, newPassword string) (int, error
     // 5. Choose processing mode
     if len(records) < parallelThreshold {
         // Small dataset: Sequential processing
-        return bulkRekeySequential(ctx, records, oldPassword, newPassword)
+        return tokensChangePasswordSequential(ctx, records, oldPassword, newPassword)
     }
     // Large dataset: Parallel processing
-    return bulkRekeyParallel(ctx, records, oldPassword, newPassword)
+    return tokensChangePasswordParallel(ctx, records, oldPassword, newPassword)
 }
 ```
 
@@ -136,14 +136,14 @@ func BulkRekey(ctx context.Context, oldPassword, newPassword string) (int, error
 For small datasets, single-threaded processing provides simplicity and reliability:
 
 ```go
-func bulkRekeySequential(ctx context.Context, records []Record, oldPassword, newPassword string) (int, error) {
-    rekeyed := 0
+func tokensChangePasswordSequential(ctx context.Context, records []Record, oldPassword, newPassword string) (int, error) {
+    changed := 0
     
     for _, record := range records {
         // Check context cancellation
         select {
         case <-ctx.Done():
-            return rekeyed, ctx.Err()
+            return changed, ctx.Err()
         default:
         }
         
@@ -157,19 +157,19 @@ func bulkRekeySequential(ctx context.Context, records []Record, oldPassword, new
         // Re-encrypt with new password
         encodedValue, err := encode(decryptedValue, newPassword)
         if err != nil {
-            return rekeyed, err
+            return changed, err
         }
         
         // Update record
         record.Value = encodedValue
         if err := store.RecordUpdate(ctx, record); err != nil {
-            return rekeyed, err
+            return changed, err
         }
         
-        rekeyed++
+        changed++
     }
     
-    return rekeyed, nil
+    return changed, nil
 }
 ```
 
@@ -178,7 +178,7 @@ func bulkRekeySequential(ctx context.Context, records []Record, oldPassword, new
 For large datasets, worker pools provide better throughput:
 
 ```go
-func bulkRekeyParallel(ctx context.Context, records []Record, oldPassword, newPassword string) (int, error) {
+func tokensChangePasswordParallel(ctx context.Context, records []Record, oldPassword, newPassword string) (int, error) {
     const numWorkers = 10
     const batchSize = 100
     
@@ -197,7 +197,7 @@ func bulkRekeyParallel(ctx context.Context, records []Record, oldPassword, newPa
         go func() {
             defer wg.Done()
             for batch := range recordChan {
-                count, err := processBatch(ctx, batch, oldPassword, newPassword)
+                count, err := processBatchPasswordChange(ctx, batch, oldPassword, newPassword)
                 if err != nil {
                     select {
                     case errorChan <- err:
@@ -240,19 +240,19 @@ func bulkRekeyParallel(ctx context.Context, records []Record, oldPassword, newPa
     }()
     
     // Aggregate results with error prioritization
-    totalRekeyed := 0
+    totalChanged := 0
     for {
         select {
         case err := <-errorChan:
             cancel()
-            return totalRekeyed, err
+            return totalChanged, err
         case count, ok := <-resultChan:
             if !ok {
-                return totalRekeyed, nil
+                return totalChanged, nil
             }
-            totalRekeyed += count
+            totalChanged += count
         case <-ctx.Done():
-            return totalRekeyed, ctx.Err()
+            return totalChanged, ctx.Err()
         }
     }
 }
@@ -263,16 +263,16 @@ func bulkRekeyParallel(ctx context.Context, records []Record, oldPassword, newPa
 For very large datasets, streaming prevents memory exhaustion:
 
 ```go
-func bulkRekeyWithCursor(ctx context.Context, oldPassword, newPassword string) (int, error) {
+func tokensChangePasswordWithCursor(ctx context.Context, oldPassword, newPassword string) (int, error) {
     const cursorBatchSize = 1000
-    totalRekeyed := 0
+    totalChanged := 0
     offset := 0
     
     for {
         // Check cancellation
         select {
         case <-ctx.Done():
-            return totalRekeyed, ctx.Err()
+            return totalChanged, ctx.Err()
         default:
         }
         
@@ -280,7 +280,7 @@ func bulkRekeyWithCursor(ctx context.Context, oldPassword, newPassword string) (
         query := RecordQuery().SetLimit(cursorBatchSize).SetOffset(offset)
         records, err := store.RecordList(ctx, query)
         if err != nil {
-            return totalRekeyed, err
+            return totalChanged, err
         }
         
         // No more records
@@ -289,11 +289,11 @@ func bulkRekeyWithCursor(ctx context.Context, oldPassword, newPassword string) (
         }
         
         // Process batch sequentially
-        rekeyed, err := bulkRekeySequential(ctx, records, oldPassword, newPassword)
+        changed, err := tokensChangePasswordSequential(ctx, records, oldPassword, newPassword)
         if err != nil {
-            return totalRekeyed, err
+            return totalChanged, err
         }
-        totalRekeyed += rekeyed
+        totalChanged += changed
         
         // Move to next batch
         offset += len(records)
@@ -304,7 +304,7 @@ func bulkRekeyWithCursor(ctx context.Context, oldPassword, newPassword string) (
         }
     }
     
-    return totalRekeyed, nil
+    return totalChanged, nil
 }
 ```
 
@@ -367,10 +367,10 @@ go func() {
     cancel() // Cancel after 30 seconds
 }()
 
-count, err := vault.BulkRekey(ctx, "old", "new")
+count, err := vault.TokensChangePassword(ctx, "old", "new")
 if err != nil {
     // err wraps context.Canceled and includes count
-    fmt.Printf("Partial rekey: %d records\n", count)
+    fmt.Printf("Partial password change: %d tokens\n", count)
 }
 ```
 
@@ -407,23 +407,23 @@ The parallel implementation uses a fixed number of workers (10) optimized for:
 
 ## Best Practices
 
-### Before Bulk Rekey
+### Before Tokens Change Password
 
 1. **Backup your database**: Always backup before bulk operations
 2. **Test on small dataset**: Verify with a subset of records
 3. **Monitor resources**: Check CPU, memory, and database load
 4. **Schedule appropriately**: Run during low-traffic periods
 
-### During Bulk Rekey
+### During Tokens Change Password
 
 1. **Use context with timeout**: Prevent runaway operations
 2. **Monitor progress**: Log partial counts for large datasets
 3. **Handle partial failures**: Check error types for cancellation vs failures
 
-### After Bulk Rekey
+### After Tokens Change Password
 
-1. **Verify count**: Ensure expected number of records were rekeyed
-2. **Test sample records**: Verify decryption with new password works
+1. **Verify count**: Ensure expected number of tokens were changed
+2. **Test sample tokens**: Verify decryption with new password works
 3. **Update documentation**: Record the password change
 
 ## See Also
@@ -435,4 +435,4 @@ The parallel implementation uses a fixed number of workers (10) optimized for:
 
 ## Changelog
 
-- **v1.0.0** (2026-02-04): Initial documentation for pure encryption bulk rekey module
+- **v1.0.0** (2026-02-04): Initial documentation for tokens change password module
