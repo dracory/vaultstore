@@ -7,7 +7,7 @@ import "strconv"
 type gormVaultRecord struct {
 	ID            string `gorm:"primaryKey;size:40;column:id"`
 	Token         string `gorm:"uniqueIndex;size:40;column:vault_token"` // TOKEN_MAX_TOTAL_LENGTH
-	Value         string `gorm:"type:text;column:vault_value"`
+	Value         string `gorm:"type:longtext;column:vault_value"`
 	CreatedAt     string `gorm:"size:20;column:created_at"`
 	UpdatedAt     string `gorm:"size:20;column:updated_at"`
 	ExpiresAt     string `gorm:"size:20;column:expires_at"`

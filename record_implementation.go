@@ -2,7 +2,6 @@ package vaultstore
 
 import (
 	"github.com/dracory/dataobject"
-	"github.com/dracory/sb"
 	"github.com/dracory/uid"
 	"github.com/dromara/carbon/v2"
 )
@@ -20,8 +19,8 @@ func NewRecord() RecordInterface {
 		SetID(uid.HumanUid()).
 		SetCreatedAt(carbon.Now(carbon.UTC).ToDateTimeString(carbon.UTC)).
 		SetUpdatedAt(carbon.Now(carbon.UTC).ToDateTimeString(carbon.UTC)).
-		SetExpiresAt(sb.MAX_DATETIME).
-		SetSoftDeletedAt(sb.MAX_DATETIME)
+		SetExpiresAt(MAX_DATETIME).
+		SetSoftDeletedAt(MAX_DATETIME)
 
 	return d
 }

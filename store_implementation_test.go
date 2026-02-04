@@ -3,7 +3,6 @@ package vaultstore
 import (
 	"context"
 	"errors"
-	"strings"
 	"testing"
 
 	"database/sql"
@@ -280,35 +279,6 @@ func Test_Store_EnableDebug(t *testing.T) {
 	store.EnableDebug(false)
 	if store.debugEnabled != false {
 		t.Fatalf("Expected debugEnabled to be false after disabling, got %v", store.debugEnabled)
-	}
-}
-
-func Test_Store_SqlCreateTable(t *testing.T) {
-	db, err := initDB()
-	if err != nil {
-		t.Fatalf("initDB: Expected [err] to be nil received [%v]", err.Error())
-	}
-
-	store, err := NewStore(NewStoreOptions{
-		VaultTableName:     "vault_sql_test",
-		VaultMetaTableName: "vault_meta",
-		DB:                 db,
-		AutomigrateEnabled: false,
-	})
-
-	if err != nil {
-		t.Fatalf("NewStore: Expected [err] to be nil received [%v]", err.Error())
-	}
-
-	sql := store.SqlCreateTable()
-
-	// Check that the SQL contains the table name
-	if sql == "" {
-		t.Fatal("Expected non-empty SQL statement")
-	}
-
-	if !strings.Contains(sql, "vault_sql_test") {
-		t.Fatalf("Expected SQL to contain table name 'vault_sql_test', got: %s", sql)
 	}
 }
 

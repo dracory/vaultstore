@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 
-	"github.com/dracory/sb"
 	"github.com/dromara/carbon/v2"
 	"gorm.io/gorm/clause"
 )
@@ -206,11 +205,11 @@ func (store *storeImplementation) RecordList(ctx context.Context, query RecordQu
 
 	// Apply ordering
 	if query.IsOrderBySet() && query.GetOrderBy() != "" {
-		sortOrder := sb.DESC
+		sortOrder := DESC
 		if query.IsSortOrderSet() && query.GetSortOrder() != "" {
 			sortOrder = query.GetSortOrder()
 		}
-		if sortOrder == sb.ASC {
+		if sortOrder == ASC {
 			db = db.Order(clause.OrderByColumn{Column: clause.Column{Name: query.GetOrderBy()}, Desc: false})
 		} else {
 			db = db.Order(clause.OrderByColumn{Column: clause.Column{Name: query.GetOrderBy()}, Desc: true})

@@ -8,6 +8,13 @@ const COLUMN_UPDATED_AT = "updated_at"
 const COLUMN_VAULT_TOKEN = "vault_token"
 const COLUMN_VAULT_VALUE = "vault_value"
 
+// Database constants (replaces github.com/dracory/sb dependency)
+const (
+	MAX_DATETIME = "9999-12-31 23:59:59"
+	ASC          = "ASC"
+	DESC         = "DESC"
+)
+
 // Meta table column constants
 const (
 	COLUMN_OBJECT_TYPE = "object_type"
