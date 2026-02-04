@@ -1,11 +1,11 @@
 ---
 path: llm-context.md
 page-type: overview
-summary: Complete codebase summary optimized for LLM consumption including identity-based password management features.
-tags: [llm, context, summary, identity, cryptoconfig]
+summary: Complete codebase summary optimized for LLM consumption including pure encryption bulk rekey features.
+tags: [llm, context, summary, bulk-rekey, cryptoconfig]
 created: 2026-02-03
-updated: 2026-02-03
-version: 1.1.0
+updated: 2026-02-04
+version: 1.2.0
 ---
 
 # LLM Context: VaultStore
@@ -36,7 +36,7 @@ vaultstore/
 │   │   │   ├── query_interface.md
 │   │   │   ├── record_management.md
 │   │   │   ├── token_operations.md
-│   │   │   └── password_identity_management.md  # New module
+│   │   │   └── bulk_rekey.md         # Pure encryption bulk rekey
 │   │   └── *.md            # Other wiki pages
 │   ├── proposals/          # Design proposals
 │   └── *.md                # Other docs
@@ -64,10 +64,10 @@ vaultstore/
 4. **MetaInterface** - Interface for vault metadata operations (password identities, settings)
 5. **Tokens** - Unique identifiers providing secure access to stored encrypted values
 6. **Records** - Underlying data structure storing encrypted information with metadata
-7. **Password Identity** - Metadata-based password tracking for optimized bulk operations
-8. **Encryption** - AES-256-GCM encryption with Argon2id key derivation (configurable via CryptoConfig)
-9. **Soft Delete** - Logical deletion mechanism with recovery capability
-10. **Bulk Rekey** - Efficient password rotation using identity-based metadata
+7. **Encryption** - AES-256-GCM encryption with Argon2id key derivation (configurable via CryptoConfig)
+8. **Soft Delete** - Logical deletion mechanism with recovery capability
+9. **Bulk Rekey** - Pure encryption password rotation without metadata (scan-and-test approach)
+10. **Parallel Processing** - Worker pools for large dataset bulk operations
 
 ## Common Patterns
 
@@ -85,13 +85,12 @@ Defines `StoreInterface`, `RecordInterface`, and `RecordQueryInterface` - the fo
 
 ### Store Implementation (`store_*.go`)
 - `store_new.go` - Factory function for creating store instances
-- `store_new_options.go` - NewStoreOptions struct with CryptoConfig and PasswordIdentityEnabled
+- `store_new_options.go` - NewStoreOptions struct with CryptoConfig and ParallelThreshold
 - `store_implementation.go` - Core store logic and database operations
 - `store_record_methods.go` - Record CRUD operations
 - `store_token_methods.go` - Token lifecycle management
 - `store_record_query.go` - Query execution and SQL generation
-- `store_bulk_rekey_methods.go` - Bulk rekey operations
-- `store_password_identity_methods.go` - Password identity management
+- `store_bulk_rekey_methods.go` - Pure encryption bulk rekey with parallel processing
 
 ### Encryption (`encdec*.go`, `constants.go`)
 - `encdec.go` - Main encryption/decryption functions using AES-256-GCM with Argon2id

@@ -25,6 +25,7 @@ VaultStore is meant to be integrated into your application as a library, providi
 - Secure storage of sensitive data
 - Token-based access to secrets
 - Password protection for stored values
+- Password rotation
 - Flexible query interface for retrieving records
 - Soft delete functionality for data recovery
 - Support for multiple database backends
@@ -37,7 +38,7 @@ For commercial use, please use my [contact page](https://lesichkov.co.uk/contact
 
 ## Installation
 ```
-go get -u github.com/gouniverse/valuestore
+go get -u github.com/dracory/vaultstore
 ```
 
 ## Technical Details
@@ -71,6 +72,10 @@ value, err := vault.TokenRead(token, "my_password")
 
 // Update a token's value
 err := vault.TokenUpdate(token, "new_value", "my_password")
+
+// Bulk rekey all records with old password to new password
+ctx := context.Background()
+count, err := vault.BulkRekey(ctx, "old_password", "new_password")
 
 // Hard delete a token
 err := vault.TokenDelete(token)

@@ -4,8 +4,8 @@ page-type: overview
 summary: Master index of all LiveWiki documentation pages.
 tags: [index, navigation, contents]
 created: 2026-02-03
-updated: 2026-02-03
-version: 1.0.0
+updated: 2026-02-04
+version: 1.1.0
 ---
 
 # Table of Contents
@@ -26,6 +26,7 @@ version: 1.0.0
 - **[Core Store](modules/core_store.md)** - Main store implementation and interfaces
 - **[Record Management](modules/record_management.md)** - Record CRUD operations
 - **[Token Operations](modules/token_operations.md)** - Token-based access methods
+- **[Bulk Rekey](modules/bulk_rekey.md)** - Pure encryption bulk rekey operations
 - **[Encryption](modules/encryption.md)** - Encryption and decryption utilities
 - **[Query Interface](modules/query_interface.md)** - Flexible query system
 

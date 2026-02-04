@@ -1,11 +1,11 @@
 ---
 path: api_reference.md
 page-type: reference
-summary: Complete API reference for VaultStore interfaces and methods including identity-based password management.
-tags: [api, reference, interfaces, methods, bulk-rekey, identity]
+summary: Complete API reference for VaultStore interfaces and methods including pure encryption bulk rekey.
+tags: [api, reference, interfaces, methods, bulk-rekey]
 created: 2026-02-03
-updated: 2026-02-03
-version: 1.1.0
+updated: 2026-02-04
+version: 1.2.0
 ---
 
 # API Reference
@@ -54,15 +54,12 @@ TokenSoftDelete(ctx context.Context, token string) error
 TokenUpdate(ctx context.Context, token string, value string, password string) error
 TokensRead(ctx context.Context, tokens []string, password string) (map[string]string, error)
 
-// Identity-based Password Management
+// Pure Encryption Bulk Rekey
 BulkRekey(ctx context.Context, oldPassword, newPassword string) (int, error)
-MigrateRecordLinks(ctx context.Context, password string) (int, error)
 
 // Vault Settings
 GetVaultVersion(ctx context.Context) (string, error)
 SetVaultVersion(ctx context.Context, version string) error
-IsVaultMigrated(ctx context.Context) (bool, error)
-MarkVaultMigrated(ctx context.Context) error
 GetVaultSetting(ctx context.Context, key string) (string, error)
 SetVaultSetting(ctx context.Context, key, value string) error
 ```
@@ -173,6 +170,8 @@ type NewStoreOptions struct {
     AutomigrateEnabled bool    // Optional: Enable auto migration
     DebugEnabled       bool    // Optional: Enable debug logging
     DbDriverName       string  // Optional: Database driver name
+    CryptoConfig       *CryptoConfig // Optional: Custom Argon2id parameters
+    ParallelThreshold  int     // Optional: Threshold for parallel bulk rekey (default: 10000)
 }
 ```
 
@@ -497,11 +496,11 @@ Encryption errors occur during cryptographic operations:
 - Corrupted encrypted data
 - Encryption algorithm failures
 
-## Identity-Based Password Management
+## Pure Encryption Bulk Rekey
 
 ### BulkRekey
 
-Changes the password for all records encrypted with a specific password. When PasswordIdentityEnabled is true, this operation is optimized using metadata lookups.
+Changes the password for all records encrypted with a specific password using pure encryption scan-and-test approach. No password metadata is stored, providing maximum security against correlation attacks.
 
 ```go
 func (s *storeImplementation) BulkRekey(ctx context.Context, oldPassword, newPassword string) (int, error)
@@ -509,68 +508,66 @@ func (s *storeImplementation) BulkRekey(ctx context.Context, oldPassword, newPas
 
 #### Parameters
 
-- `ctx context.Context`: Context for the operation
+- `ctx context.Context`: Context for the operation (supports cancellation)
 - `oldPassword string`: Current password used for encryption
 - `newPassword string`: New password to use for re-encryption
 
 #### Returns
 
 - `int`: Number of records re-encrypted
-- `error`: Error if operation fails
+- `error`: Error if operation fails (returns partial count with wrapped error on cancellation)
 
 #### Behavior
 
-**With PasswordIdentityEnabled (Fast Path):**
-1. Find password identity for oldPassword in metadata
-2. Query all records linked to this identity
-3. Decrypt and re-encrypt only linked records
-4. Update identity to use newPassword hash
+**Pure Encryption Approach (No Metadata):**
+1. Retrieve all records from the vault
+2. For small datasets (< parallelThreshold): Use sequential processing
+3. For large datasets (>= parallelThreshold): Use parallel processing with 10 workers
+4. For very large datasets (> 1000 records): Use cursor-based pagination to prevent memory exhaustion
+5. Attempt decryption of each record with oldPassword
+6. Re-encrypt successful decryptions with newPassword
+7. Update records in database
 
-**Without PasswordIdentityEnabled (Scan Path):**
-1. Iterate through all records in vault
-2. Attempt decryption with oldPassword
-3. Re-encrypt successful decryptions with newPassword
-4. Update records (slower for large vaults)
+**Performance Characteristics:**
+- Small datasets (< 1000 records): Sequential processing, ~1-2 seconds
+- Medium datasets (1000-10000 records): Sequential processing, ~10-20 seconds  
+- Large datasets (> 10000 records): Parallel processing with 10 workers
+- Very large datasets (> 1000 records): Cursor-based streaming to prevent memory exhaustion
 
 #### Example
 
 ```go
 // Rekey all records using "oldpass" to use "newpass"
+ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+defer cancel()
+
 count, err := vault.BulkRekey(ctx, "oldpass", "newpass")
 if err != nil {
-    log.Fatal(err)
+    if errors.Is(err, context.DeadlineExceeded) {
+        fmt.Printf("Partial rekey completed: %d records\n", count)
+    } else {
+        log.Fatal(err)
+    }
 }
 fmt.Printf("Re-encrypted %d records\n", count)
 ```
 
-### MigrateRecordLinks
+### ParallelThreshold Configuration
 
-Migrates existing records to use password identity management. Creates metadata links between records and their password identities.
-
-```go
-func (s *storeImplementation) MigrateRecordLinks(ctx context.Context, password string) (int, error)
-```
-
-#### Parameters
-
-- `ctx context.Context`: Context for the operation
-- `password string`: Password to use for identifying records to migrate
-
-#### Returns
-
-- `int`: Number of records migrated
-- `error`: Error if operation fails
-
-#### Example
+Configure the threshold for switching between sequential and parallel processing:
 
 ```go
-// Migrate all records that use "mypassword"
-count, err := vault.MigrateRecordLinks(ctx, "mypassword")
-if err != nil {
-    log.Fatal(err)
-}
-fmt.Printf("Migrated %d records to use identity management\n", count)
+vault, err := vaultstore.NewStore(vaultstore.NewStoreOptions{
+    VaultTableName:    "vault",
+    DB:                db,
+    ParallelThreshold: 5000, // Use parallel for datasets >= 5000 records
+})
 ```
+
+- Default: 10000 records
+- Set to 0 to use default
+- Lower values increase parallelism overhead
+- Higher values may miss parallelization benefits
 
 ## Vault Settings
 
@@ -582,7 +579,7 @@ Retrieves the current vault version from metadata.
 func (s *storeImplementation) GetVaultVersion(ctx context.Context) (string, error)
 ```
 
-Returns the vault version string (e.g., "0.30.0") or empty string if not set.
+Returns the vault version string (e.g., "0.26.0") or empty string if not set.
 
 ### SetVaultVersion
 
@@ -593,26 +590,6 @@ func (s *storeImplementation) SetVaultVersion(ctx context.Context, version strin
 ```
 
 Used to track vault state for migration purposes.
-
-### IsVaultMigrated
-
-Checks if the vault has been fully migrated to use identity management.
-
-```go
-func (s *storeImplementation) IsVaultMigrated(ctx context.Context) (bool, error)
-```
-
-Returns true if vault version indicates full migration.
-
-### MarkVaultMigrated
-
-Marks the vault as fully migrated.
-
-```go
-func (s *storeImplementation) MarkVaultMigrated(ctx context.Context) error
-```
-
-Updates vault version to indicate all records use identity management.
 
 ### GetVaultSetting
 
@@ -634,6 +611,7 @@ Allows storing arbitrary key-value pairs in vault metadata.
 
 ## Changelog
 
+- **v1.2.0** (2026-02-04): Removed identity-based password management methods (MigrateRecordLinks, IsVaultMigrated, MarkVaultMigrated). Updated BulkRekey documentation for pure encryption approach. Added ParallelThreshold configuration option.
 - **v1.1.0** (2026-02-03): Added documentation for identity-based password management (BulkRekey, MigrateRecordLinks) and vault settings methods.
 - **v1.0.0** (2026-02-03): Initial API reference documentation
 
