@@ -86,7 +86,7 @@ VaultStore is ideal for applications that need to:
 - **Database**: Database-agnostic (SQLite, PostgreSQL, MySQL supported)
 - **ORM**: GORM
 - **Encryption**: Go's crypto package
-- **Query Builder**: goqu
+- **SQL Builder**: sb (SQL Builder)
 
 ## See Also
 

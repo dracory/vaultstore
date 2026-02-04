@@ -103,14 +103,14 @@ func (store *storeImplementation) tokensChangePasswordSequential(ctx context.Con
 		}
 
 		// Try to decrypt with old password
-		decryptedValue, err := decode(rec.GetValue(), oldPassword)
+		decryptedValue, err := decode(rec.GetValue(), oldPassword, store.cryptoConfig)
 		if err != nil {
 			// Record doesn't use old password, skip it
 			continue
 		}
 
 		// Re-encrypt with new password
-		encodedValue, err := encode(decryptedValue, newPassword)
+		encodedValue, err := encode(decryptedValue, newPassword, store.cryptoConfig)
 		if err != nil {
 			return changed, fmt.Errorf("failed to encode value for record %s: %w", rec.GetID(), err)
 		}
@@ -233,14 +233,14 @@ func (store *storeImplementation) processBatchPasswordChange(ctx context.Context
 		}
 
 		// Try to decrypt with old password
-		decryptedValue, err := decode(rec.GetValue(), oldPassword)
+		decryptedValue, err := decode(rec.GetValue(), oldPassword, store.cryptoConfig)
 		if err != nil {
 			// Record doesn't use old password, skip it
 			continue
 		}
 
 		// Re-encrypt with new password
-		encodedValue, err := encode(decryptedValue, newPassword)
+		encodedValue, err := encode(decryptedValue, newPassword, store.cryptoConfig)
 		if err != nil {
 			return changed, fmt.Errorf("failed to encode value for record %s: %w", rec.GetID(), err)
 		}

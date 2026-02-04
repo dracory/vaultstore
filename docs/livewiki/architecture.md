@@ -106,7 +106,7 @@ Tokens provide secure access to stored values:
 Flexible querying system using the builder pattern:
 
 ```go
-query := vaultstore.NewRecordQuery().
+query := vaultstore.RecordQuery().
     SetToken("abc123").
     SetLimit(10).
     SetOrderBy("created_at").
@@ -129,7 +129,7 @@ VaultStore uses multiple focused interfaces rather than one large interface:
 The query system uses the builder pattern for flexible query construction:
 
 ```go
-query := vaultstore.NewRecordQuery().
+query := vaultstore.RecordQuery().
     SetToken(token).
     SetLimit(limit).
     SetOrderBy("created_at")

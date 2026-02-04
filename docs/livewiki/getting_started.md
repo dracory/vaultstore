@@ -4,8 +4,8 @@ page-type: tutorial
 summary: Installation, setup, and quick start guide for VaultStore.
 tags: [tutorial, installation, setup, quickstart]
 created: 2026-02-03
-updated: 2026-02-03
-version: 1.0.0
+updated: 2026-02-04
+version: 1.1.0
 ---
 
 # Getting Started
@@ -200,7 +200,7 @@ if err != nil {
 }
 
 // List records with query
-query := vaultstore.NewRecordQuery().
+query := vaultstore.RecordQuery().
     SetLimit(10).
     SetOrderBy("created_at").
     SetSortOrder("desc")
@@ -254,3 +254,8 @@ vault, err := vaultstore.NewStore(vaultstore.NewStoreOptions{
 - [Configuration](configuration.md) - Detailed configuration options
 - [Architecture](architecture.md) - System design and patterns
 - [Troubleshooting](troubleshooting.md) - Common issues and solutions
+
+## Changelog
+
+- **v1.1.0** (2026-02-04): Updated query builder example to use `RecordQuery()` instead of `NewRecordQuery()`
+- **v1.0.0** (2026-02-03): Initial creation

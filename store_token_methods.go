@@ -121,7 +121,7 @@ func (store *storeImplementation) TokenCreate(ctx context.Context, data string, 
 			continue // Try again with a new token
 		}
 
-		encodedData, err := encode(data, password)
+		encodedData, err := encode(data, password, store.cryptoConfig)
 		if err != nil {
 			return "", fmt.Errorf("failed to encode data: %w", err)
 		}
@@ -166,7 +166,7 @@ func (store *storeImplementation) TokenCreateCustom(ctx context.Context, token s
 		return errors.New("token already exists")
 	}
 
-	encodedData, err := encode(data, password)
+	encodedData, err := encode(data, password, store.cryptoConfig)
 	if err != nil {
 		return fmt.Errorf("failed to encode data: %w", err)
 	}
@@ -269,7 +269,7 @@ func (store *storeImplementation) TokenRead(ctx context.Context, token string, p
 		}
 	}
 
-	decoded, err := decode(entry.GetValue(), password)
+	decoded, err := decode(entry.GetValue(), password, store.cryptoConfig)
 
 	if err != nil {
 		return "", err
@@ -410,7 +410,7 @@ func (store *storeImplementation) TokenUpdate(ctx context.Context, token string,
 		return errors.New("token does not exist")
 	}
 
-	encodedValue, err := encode(value, password)
+	encodedValue, err := encode(value, password, store.cryptoConfig)
 	if err != nil {
 		return fmt.Errorf("failed to encode value: %w", err)
 	}
@@ -473,7 +473,7 @@ func (store *storeImplementation) TokensRead(ctx context.Context, tokens []strin
 			}
 		}
 
-		decoded, err := decode(entry.GetValue(), password)
+		decoded, err := decode(entry.GetValue(), password, store.cryptoConfig)
 
 		if err != nil {
 			return map[string]string{}, errors.New("decryption failed for one or more tokens")

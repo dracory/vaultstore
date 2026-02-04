@@ -14,10 +14,10 @@ import (
 	"golang.org/x/crypto/argon2"
 )
 
-func decode(value string, password string) (string, error) {
+func decode(value string, password string, config *CryptoConfig) (string, error) {
 	// Check for v2 encryption prefix (AES-GCM)
 	if strings.HasPrefix(value, ENCRYPTION_PREFIX_V2) {
-		return decodeV2(value, password)
+		return decodeV2(value, password, config)
 	}
 
 	// Legacy v1 decryption (XOR-based)
@@ -71,7 +71,12 @@ func decodeV1(value string, password string) (string, error) {
 }
 
 // decodeV2 handles AES-GCM decryption with Argon2id key derivation
-func decodeV2(value string, password string) (string, error) {
+func decodeV2(value string, password string, config *CryptoConfig) (string, error) {
+	// Use defaults if config is nil
+	if config == nil {
+		config = DefaultCryptoConfig()
+	}
+
 	// Remove the v2: prefix
 	encodedData := strings.TrimPrefix(value, ENCRYPTION_PREFIX_V2)
 
@@ -82,17 +87,18 @@ func decodeV2(value string, password string) (string, error) {
 	}
 
 	// Check minimum length (salt + nonce + tag)
-	if len(data) < V2_SALT_SIZE+V2_NONCE_SIZE+V2_TAG_SIZE {
+	minLength := config.SaltSize + config.NonceSize + config.TagSize
+	if len(data) < minLength {
 		return "", errors.New("invalid ciphertext length")
 	}
 
 	// Extract salt, nonce, and ciphertext
-	salt := data[:V2_SALT_SIZE]
-	nonce := data[V2_SALT_SIZE : V2_SALT_SIZE+V2_NONCE_SIZE]
-	ciphertext := data[V2_SALT_SIZE+V2_NONCE_SIZE:]
+	salt := data[:config.SaltSize]
+	nonce := data[config.SaltSize : config.SaltSize+config.NonceSize]
+	ciphertext := data[config.SaltSize+config.NonceSize:]
 
 	// Derive key using Argon2id
-	key := deriveKeyArgon2id(password, salt)
+	key := deriveKeyArgon2id(password, salt, config)
 
 	// Create AES cipher
 	block, err := aes.NewCipher(key)
@@ -123,21 +129,29 @@ func decodeV2(value string, password string) (string, error) {
 // Encryption versions:
 //   - v1 (deprecated): XOR encryption with MD5/SHA1 key derivation (insecure, for decryption only)
 //   - v2 (current): AES-GCM with Argon2id key derivation (secure, used for all new data)
-func encode(value string, password string) (string, error) {
-	// Always use v2 encryption for new data to ensure maximum security
-	return encodeV2(value, password)
+func encode(value string, password string, config *CryptoConfig) (string, error) {
+	// Use defaults if config is nil
+	if config == nil {
+		config = DefaultCryptoConfig()
+	}
+	return encodeV2(value, password, config)
 }
 
 // encodeV2 encrypts using AES-GCM with Argon2id key derivation
-func encodeV2(value string, password string) (string, error) {
+func encodeV2(value string, password string, config *CryptoConfig) (string, error) {
+	// Use defaults if config is nil
+	if config == nil {
+		config = DefaultCryptoConfig()
+	}
+
 	// Generate random salt
-	salt := make([]byte, V2_SALT_SIZE)
+	salt := make([]byte, config.SaltSize)
 	if _, err := io.ReadFull(cryptorand.Reader, salt); err != nil {
 		return "", fmt.Errorf("failed to generate salt: %w", err)
 	}
 
 	// Derive key using Argon2id
-	key := deriveKeyArgon2id(password, salt)
+	key := deriveKeyArgon2id(password, salt, config)
 
 	// Create AES cipher
 	block, err := aes.NewCipher(key)
@@ -168,12 +182,16 @@ func encodeV2(value string, password string) (string, error) {
 }
 
 // deriveKeyArgon2id derives a key using Argon2id
-func deriveKeyArgon2id(password string, salt []byte) []byte {
+func deriveKeyArgon2id(password string, salt []byte, config *CryptoConfig) []byte {
+	// Use defaults if config is nil
+	if config == nil {
+		config = DefaultCryptoConfig()
+	}
 	return argon2.IDKey([]byte(password), salt,
-		ARGON2_ITERATIONS,
-		ARGON2_MEMORY,
-		ARGON2_PARALLELISM,
-		ARGON2_KEY_LENGTH)
+		uint32(config.Iterations),
+		uint32(config.Memory),
+		uint8(config.Parallelism),
+		uint32(config.KeyLength))
 }
 
 // strongifyPassword Performs multiple calculations

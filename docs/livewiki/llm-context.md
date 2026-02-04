@@ -18,7 +18,7 @@ VaultStore is a secure value storage (data-at-rest) implementation for Go, desig
 
 - **Go 1.25+** - Programming language
 - **GORM** - ORM for database operations
-- **goqu** - Query builder for complex queries
+- **sb (SQL Builder)** - SQL query building
 - **AES-256-GCM** - Encryption algorithm
 - **PBKDF2** - Password-based key derivation
 - **SQLite/PostgreSQL/MySQL** - Database-agnostic support
@@ -137,16 +137,14 @@ err = vault.TokenUpdate(ctx, token, "new_value", "password")
 // Delete token
 err = vault.TokenDelete(ctx, token)
 
-// Bulk rekey (with identity management enabled)
-count, err := vault.BulkRekey(ctx, "oldpass", "newpass")
-
-// Migrate records to use identity management
-count, err := vault.MigrateRecordLinks(ctx, "password")
+// Change password for all tokens
+// Uses pure encryption scan-and-test approach (no metadata storage)
+count, err := vault.TokensChangePassword(ctx, "oldpass", "newpass")
 ```
 
 ### Query Operations
 ```go
-query := vaultstore.NewRecordQuery().
+query := vaultstore.RecordQuery().
     SetToken("abc123").
     SetLimit(10).
     SetOrderBy("created_at").
@@ -228,10 +226,9 @@ Comprehensive test coverage including:
 ## Dependencies
 
 External dependencies:
-- `github.com/doug-martin/goqu/v9` - Query builder
 - `github.com/dracory/database` - Database utilities
 - `github.com/dracory/dataobject` - Data object utilities
-- `github.com/dracory/sb` - String builder utilities
+- `github.com/dracory/sb` - SQL builder utilities
 - `github.com/dracory/uid` - UID generation
 - `github.com/dromara/carbon/v2` - Date/time utilities
 - `github.com/glebarez/sqlite` - SQLite driver

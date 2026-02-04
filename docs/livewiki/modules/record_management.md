@@ -280,7 +280,7 @@ if err != nil {
 
 ```go
 // Build query
-query := vaultstore.NewRecordQuery().
+query := vaultstore.RecordQuery().
     SetTokenIn([]string{"token1", "token2"}).
     SetLimit(10).
     SetOrderBy("created_at").
@@ -315,7 +315,7 @@ if err != nil {
 }
 
 // Find soft deleted records
-query := vaultstore.NewRecordQuery().
+query := vaultstore.RecordQuery().
     SetSoftDeletedInclude(true)
 
 deletedRecords, err := vault.RecordList(context.Background(), query)

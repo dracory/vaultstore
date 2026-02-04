@@ -38,7 +38,7 @@ func Test_encodeV2_decodeV2_Roundtrip(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			encoded, err := encodeV2(tc.value, tc.password)
+			encoded, err := encodeV2(tc.value, tc.password, nil)
 			if err != nil {
 				t.Fatalf("encodeV2 failed: %v", err)
 			}
@@ -46,7 +46,7 @@ func Test_encodeV2_decodeV2_Roundtrip(t *testing.T) {
 				t.Fatalf("Expected v2: prefix, got: %s", encoded[:10])
 			}
 
-			decoded, err := decodeV2(encoded, tc.password)
+			decoded, err := decodeV2(encoded, tc.password, nil)
 			if err != nil {
 				t.Fatalf("decodeV2 failed: %v", err)
 			}
@@ -64,11 +64,11 @@ func Test_decodeV2_WrongPassword(t *testing.T) {
 	password := "correct_password"
 	wrongPassword := "wrong_password"
 
-	encoded, err := encodeV2(value, password)
+	encoded, err := encodeV2(value, password, nil)
 	if err != nil {
 		t.Fatalf("encodeV2 failed: %v", err)
 	}
-	_, err = decodeV2(encoded, wrongPassword)
+	_, err = decodeV2(encoded, wrongPassword, nil)
 	if err == nil {
 		t.Fatal("Expected error with wrong password, got nil")
 	}
@@ -79,14 +79,14 @@ func Test_decodeV2_TamperedCiphertext(t *testing.T) {
 	value := "secret data"
 	password := "password"
 
-	encoded, err := encodeV2(value, password)
+	encoded, err := encodeV2(value, password, nil)
 	if err != nil {
 		t.Fatalf("encodeV2 failed: %v", err)
 	}
 	// Tamper with the ciphertext by changing a character
 	tampered := encoded[:len(encoded)-5] + "XXXXX"
 
-	_, err = decodeV2(tampered, password)
+	_, err = decodeV2(tampered, password, nil)
 	if err == nil {
 		t.Fatal("Expected error with tampered ciphertext, got nil")
 	}
@@ -97,11 +97,11 @@ func Test_encodeV2_decodeV2_EmptyPassword(t *testing.T) {
 	value := "test data"
 	password := ""
 
-	encoded, err := encodeV2(value, password)
+	encoded, err := encodeV2(value, password, nil)
 	if err != nil {
 		t.Fatalf("encodeV2 failed: %v", err)
 	}
-	decoded, err := decodeV2(encoded, password)
+	decoded, err := decodeV2(encoded, password, nil)
 	if err != nil {
 		t.Fatalf("decodeV2 with empty password failed: %v", err)
 	}
@@ -115,7 +115,7 @@ func Test_encode_UsesV2(t *testing.T) {
 	value := "test_value"
 	password := "test_password"
 
-	encoded, err := encode(value, password)
+	encoded, err := encode(value, password, nil)
 	if err != nil {
 		t.Fatalf("encode() failed: %v", err)
 	}
@@ -129,11 +129,11 @@ func Test_decode_HandlesV2(t *testing.T) {
 	value := "test_value"
 	password := "test_password"
 
-	encoded, err := encodeV2(value, password)
+	encoded, err := encodeV2(value, password, nil)
 	if err != nil {
 		t.Fatalf("encodeV2 failed: %v", err)
 	}
-	decoded, err := decode(encoded, password)
+	decoded, err := decode(encoded, password, nil)
 	if err != nil {
 		t.Fatalf("decode() failed for v2: %v", err)
 	}
@@ -152,7 +152,7 @@ func Test_decode_BackwardCompatibilityV1(t *testing.T) {
 	legacyEncoded := encodeV1(value, password)
 
 	// decode() should handle v1 data
-	decoded, err := decode(legacyEncoded, password)
+	decoded, err := decode(legacyEncoded, password, nil)
 	if err != nil {
 		t.Fatalf("decode() failed for v1 legacy data: %v", err)
 	}
@@ -164,7 +164,7 @@ func Test_decode_BackwardCompatibilityV1(t *testing.T) {
 // Test decodeV2 with invalid base64
 func Test_decodeV2_InvalidBase64(t *testing.T) {
 	invalidEncoded := ENCRYPTION_PREFIX_V2 + "!!!not_valid_base64!!!"
-	_, err := decodeV2(invalidEncoded, "password")
+	_, err := decodeV2(invalidEncoded, "password", nil)
 	if err == nil {
 		t.Fatal("Expected error for invalid base64, got nil")
 	}
@@ -173,7 +173,7 @@ func Test_decodeV2_InvalidBase64(t *testing.T) {
 // Test decodeV2 with too short data
 func Test_decodeV2_TooShortData(t *testing.T) {
 	shortData := ENCRYPTION_PREFIX_V2 + base64Encode([]byte("short"))
-	_, err := decodeV2(shortData, "password")
+	_, err := decodeV2(shortData, "password", nil)
 	if err == nil {
 		t.Fatal("Expected error for short data, got nil")
 	}
@@ -184,8 +184,8 @@ func Test_deriveKeyArgon2id_Consistency(t *testing.T) {
 	password := "test_password"
 	salt := []byte("1234567890123456")
 
-	key1 := deriveKeyArgon2id(password, salt)
-	key2 := deriveKeyArgon2id(password, salt)
+	key1 := deriveKeyArgon2id(password, salt, nil)
+	key2 := deriveKeyArgon2id(password, salt, nil)
 
 	if string(key1) != string(key2) {
 		t.Fatal("Argon2id key derivation not deterministic for same salt")
@@ -202,8 +202,8 @@ func Test_deriveKeyArgon2id_DifferentSalts(t *testing.T) {
 	salt1 := []byte("1234567890123456")
 	salt2 := []byte("6543210987654321")
 
-	key1 := deriveKeyArgon2id(password, salt1)
-	key2 := deriveKeyArgon2id(password, salt2)
+	key1 := deriveKeyArgon2id(password, salt1, nil)
+	key2 := deriveKeyArgon2id(password, salt2, nil)
 
 	if string(key1) == string(key2) {
 		t.Fatal("Different salts should produce different keys")
@@ -215,11 +215,11 @@ func Test_encodeV2_UniqueOutput(t *testing.T) {
 	value := "same_value"
 	password := "same_password"
 
-	encoded1, err := encodeV2(value, password)
+	encoded1, err := encodeV2(value, password, nil)
 	if err != nil {
 		t.Fatalf("encodeV2 failed: %v", err)
 	}
-	encoded2, err := encodeV2(value, password)
+	encoded2, err := encodeV2(value, password, nil)
 	if err != nil {
 		t.Fatalf("encodeV2 failed: %v", err)
 	}
@@ -229,8 +229,8 @@ func Test_encodeV2_UniqueOutput(t *testing.T) {
 	}
 
 	// Both should decrypt to same value
-	decoded1, _ := decodeV2(encoded1, password)
-	decoded2, _ := decodeV2(encoded2, password)
+	decoded1, _ := decodeV2(encoded1, password, nil)
+	decoded2, _ := decodeV2(encoded2, password, nil)
 
 	if decoded1 != value || decoded2 != value {
 		t.Fatal("Both encodings should decrypt to original value")

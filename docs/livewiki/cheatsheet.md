@@ -4,8 +4,8 @@ page-type: reference
 summary: Quick reference for common VaultStore operations and patterns.
 tags: [cheatsheet, reference, quick-start, patterns]
 created: 2026-02-03
-updated: 2026-02-03
-version: 1.0.0
+updated: 2026-02-04
+version: 1.1.0
 ---
 
 # VaultStore Cheatsheet
@@ -150,7 +150,7 @@ record, err := vault.RecordFindByToken(context.Background(), "my_token")
 record, err := vault.RecordFindByID(context.Background(), "record_id")
 
 // List records
-query := vaultstore.NewRecordQuery().SetLimit(10)
+query := vaultstore.RecordQuery().SetLimit(10)
 records, err := vault.RecordList(context.Background(), query)
 ```
 
@@ -196,29 +196,29 @@ err = vault.RecordDeleteByToken(context.Background(), "my_token")
 
 ```go
 // Find by token
-query := vaultstore.NewRecordQuery().SetToken("my_token")
+query := vaultstore.RecordQuery().SetToken("my_token")
 
 // Find multiple tokens
-query := vaultstore.NewRecordQuery().
+query := vaultstore.RecordQuery().
     SetTokenIn([]string{"token1", "token2", "token3"})
 
 // Find by ID
-query := vaultstore.NewRecordQuery().SetID("record_id")
+query := vaultstore.RecordQuery().SetID("record_id")
 ```
 
 ### Filtering
 
 ```go
 // Exclude soft deleted records
-query := vaultstore.NewRecordQuery().
+query := vaultstore.RecordQuery().
     SetSoftDeletedInclude(false)
 
 // Include soft deleted records
-query := vaultstore.NewRecordQuery().
+query := vaultstore.RecordQuery().
     SetSoftDeletedInclude(true)
 
 // Select specific columns
-query := vaultstore.NewRecordQuery().
+query := vaultstore.RecordQuery().
     SetColumns([]string{"id", "token", "created_at"})
 ```
 
@@ -226,16 +226,16 @@ query := vaultstore.NewRecordQuery().
 
 ```go
 // Sort by creation date (newest first)
-query := vaultstore.NewRecordQuery().
+query := vaultstore.RecordQuery().
     SetOrderBy("created_at").
     SetSortOrder("desc")
 
 // Paginate results
-query := vaultstore.NewRecordQuery().
+query := vaultstore.RecordQuery().
     SetLimit(25).
     SetOffset(0)  // Page 1
 
-query = vaultstore.NewRecordQuery().
+query = vaultstore.RecordQuery().
     SetLimit(25).
     SetOffset(25) // Page 2
 ```
@@ -244,11 +244,11 @@ query = vaultstore.NewRecordQuery().
 
 ```go
 // Count all records
-query := vaultstore.NewRecordQuery()
+query := vaultstore.RecordQuery()
 count, err := vault.RecordCount(context.Background(), query)
 
 // Count filtered records
-query = vaultstore.NewRecordQuery().
+query = vaultstore.RecordQuery().
     SetSoftDeletedInclude(false)
 count, err = vault.RecordCount(context.Background(), query)
 ```
@@ -432,15 +432,15 @@ if err != nil {
 
 ```go
 // Select only needed columns
-query := vaultstore.NewRecordQuery().
+query := vaultstore.RecordQuery().
     SetColumns([]string{"id", "token", "created_at"})
 
 // Limit results
-query = vaultstore.NewRecordQuery().
+query = vaultstore.RecordQuery().
     SetLimit(100)
 
 // Use indexes effectively
-query = vaultstore.NewRecordQuery().
+query = vaultstore.RecordQuery().
     SetToken("specific_token") // Uses token index
 ```
 
@@ -560,3 +560,8 @@ CREATE INDEX idx_vault_soft_deleted_at ON vault(soft_deleted_at);
 - [API Reference](api_reference.md) - Full API documentation
 - [Troubleshooting](troubleshooting.md) - Common issues and solutions
 - [Development](development.md) - Development workflow and testing
+
+## Changelog
+
+- **v1.1.0** (2026-02-04): Updated all query examples to use `RecordQuery()` instead of `NewRecordQuery()`
+- **v1.0.0** (2026-02-03): Initial creation

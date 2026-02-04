@@ -4,8 +4,8 @@ page-type: overview
 summary: How data moves through the VaultStore system including identity-based password management flows.
 tags: [data-flow, architecture, processing, lifecycle, identity]
 created: 2026-02-03
-updated: 2026-02-03
-version: 1.1.0
+updated: 2026-02-04
+version: 1.2.0
 ---
 
 # Data Flow
@@ -120,7 +120,7 @@ graph LR
 
 1. **Query Construction**: Build query using builder pattern
 2. **Validation**: Validate query parameters
-3. **SQL Generation**: Convert query to SQL using goqu
+3. **SQL Generation**: Convert query to SQL using the sb (SQL Builder) package
 4. **Database Execution**: Execute SQL query
 5. **Result Mapping**: Map database rows to record objects
 6. **Filtering**: Apply additional filters (soft delete, etc.)
@@ -130,14 +130,14 @@ graph LR
 #### Simple Query
 
 ```go
-query := vaultstore.NewRecordQuery().
+query := vaultstore.RecordQuery().
     SetToken("abc123")
 ```
 
 #### Complex Query
 
 ```go
-query := vaultstore.NewRecordQuery().
+query := vaultstore.RecordQuery().
     SetTokenIn([]string{"token1", "token2"}).
     SetLimit(10).
     SetOrderBy("created_at").
@@ -399,5 +399,6 @@ sequenceDiagram
 
 ## Changelog
 
+- **v1.2.0** (2026-02-04): Updated query builder references from `NewRecordQuery()` to `RecordQuery()`, changed SQL generation description from goqu to sb package
 - **v1.1.0** (2026-02-03): Added identity-based data flow diagrams for token creation, bulk rekey, and migration operations.
 - **v1.0.0** (2026-02-03): Initial data flow documentation

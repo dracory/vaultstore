@@ -5,7 +5,7 @@ summary: Complete API reference for VaultStore interfaces and methods including 
 tags: [api, reference, interfaces, methods, bulk-rekey]
 created: 2026-02-03
 updated: 2026-02-04
-version: 1.2.0
+version: 1.3.0
 ---
 
 # API Reference
@@ -180,17 +180,17 @@ type NewStoreOptions struct {
 - `*storeImplementation`: Store instance
 - `error`: Error if creation fails
 
-### NewRecordQuery
+### RecordQuery
 
 Creates a new query builder instance.
 
 ```go
-func NewRecordQuery() *recordQueryImplementation
+func RecordQuery() RecordQueryInterface
 ```
 
 #### Returns
 
-- `*recordQueryImplementation`: Query builder instance
+- `RecordQueryInterface`: Query builder instance
 
 ## Token Operations
 
@@ -429,7 +429,7 @@ func (s *storeImplementation) RecordCount(ctx context.Context, query RecordQuery
 ### Basic Query
 
 ```go
-query := vaultstore.NewRecordQuery().
+query := vaultstore.RecordQuery().
     SetToken("abc123").
     SetLimit(10)
 
@@ -439,7 +439,7 @@ records, err := vault.RecordList(context.Background(), query)
 ### Advanced Query
 
 ```go
-query := vaultstore.NewRecordQuery().
+query := vaultstore.RecordQuery().
     SetTokenIn([]string{"token1", "token2", "token3"}).
     SetLimit(20).
     SetOffset(0).
@@ -453,7 +453,7 @@ records, err := vault.RecordList(context.Background(), query)
 ### Count Query
 
 ```go
-query := vaultstore.NewRecordQuery().
+query := vaultstore.RecordQuery().
     SetSoftDeletedInclude(false)
 
 count, err := vault.RecordCount(context.Background(), query)

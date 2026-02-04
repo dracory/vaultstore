@@ -10,7 +10,7 @@ var test_val = createRandomBlock(1000000)
 
 func BenchmarkEnc(b *testing.B) {
 	for i := 0; i < b.N; i++ {
-		_, err := encode(test_val, "test_password")
+		_, err := encode(test_val, "test_password", nil)
 		if err != nil {
 			b.Fatal(err)
 		}

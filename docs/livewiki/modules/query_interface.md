@@ -4,8 +4,8 @@ page-type: module
 summary: Flexible query building and execution system for record retrieval.
 tags: [module, query, interface, filtering]
 created: 2026-02-03
-updated: 2026-02-03
-version: 1.0.0
+updated: 2026-02-04
+version: 1.1.0
 ---
 
 # Query Interface Module
@@ -17,7 +17,6 @@ The query interface module provides a flexible, type-safe query building system 
 The query interface module enables:
 - Flexible record filtering and searching
 - Type-safe query building with method chaining
-- Efficient SQL generation using goqu
 - Pagination and result limiting
 - Column selection optimization
 - Soft delete handling
@@ -32,7 +31,6 @@ Defines the contract for query building:
 type RecordQueryInterface interface {
     // Validation
     Validate() error
-    toSelectDataset(store StoreInterface) (*goqu.SelectDataset, []any, err error)
 
     // Column Selection
     GetColumns() []string
@@ -86,7 +84,7 @@ type RecordQueryInterface interface {
 ### Factory Function
 
 ```go
-func NewRecordQuery() *recordQueryImplementation
+func RecordQuery() RecordQueryInterface
 ```
 
 Creates a new query builder instance with default values.
@@ -96,11 +94,11 @@ Creates a new query builder instance with default values.
 The query interface supports fluent method chaining:
 
 ```go
-query := vaultstore.NewRecordQuery().
+query := vaultstore.RecordQuery().
     SetToken("abc123").
     SetLimit(10).
     SetOrderBy("created_at").
-    SetSortOrder("desc").
+    SetSortOrder(vaultstore.DESC).
     SetSoftDeletedInclude(false)
 ```
 
@@ -112,7 +110,7 @@ query := vaultstore.NewRecordQuery().
 
 ```go
 // Filter by specific ID
-query := vaultstore.NewRecordQuery().
+query := vaultstore.RecordQuery().
     SetID("550e8400-e29b-41d4-a716-446655440000")
 ```
 
@@ -120,7 +118,7 @@ query := vaultstore.NewRecordQuery().
 
 ```go
 // Filter by list of IDs
-query := vaultstore.NewRecordQuery().
+query := vaultstore.RecordQuery().
     SetIDIn([]string{
         "550e8400-e29b-41d4-a716-446655440000",
         "550e8400-e29b-41d4-a716-446655440001",
@@ -134,7 +132,7 @@ query := vaultstore.NewRecordQuery().
 
 ```go
 // Filter by specific token
-query := vaultstore.NewRecordQuery().
+query := vaultstore.RecordQuery().
     SetToken("my_token_abc123")
 ```
 
@@ -142,7 +140,7 @@ query := vaultstore.NewRecordQuery().
 
 ```go
 // Filter by list of tokens
-query := vaultstore.NewRecordQuery().
+query := vaultstore.RecordQuery().
     SetTokenIn([]string{
         "token1",
         "token2",
@@ -154,11 +152,11 @@ query := vaultstore.NewRecordQuery().
 
 ```go
 // Include soft deleted records
-query := vaultstore.NewRecordQuery().
+query := vaultstore.RecordQuery().
     SetSoftDeletedInclude(true)
 
 // Exclude soft deleted records (default)
-query := vaultstore.NewRecordQuery().
+query := vaultstore.RecordQuery().
     SetSoftDeletedInclude(false)
 ```
 
@@ -168,12 +166,12 @@ query := vaultstore.NewRecordQuery().
 
 ```go
 // Get first 10 records
-query := vaultstore.NewRecordQuery().
+query := vaultstore.RecordQuery().
     SetLimit(10).
     SetOffset(0)
 
 // Get records 11-20 (second page)
-query := vaultstore.NewRecordQuery().
+query := vaultstore.RecordQuery().
     SetLimit(10).
     SetOffset(10)
 ```
@@ -184,7 +182,7 @@ query := vaultstore.NewRecordQuery().
 // Pagination helper function
 func paginateQuery(page, pageSize int) RecordQueryInterface {
     offset := (page - 1) * pageSize
-    return vaultstore.NewRecordQuery().
+    return vaultstore.RecordQuery().
         SetLimit(pageSize).
         SetOffset(offset)
 }
@@ -201,14 +199,14 @@ query := paginateQuery(page, pageSize)
 
 ```go
 // Sort by creation time (ascending)
-query := vaultstore.NewRecordQuery().
+query := vaultstore.RecordQuery().
     SetOrderBy("created_at").
-    SetSortOrder("asc")
+    SetSortOrder(vaultstore.ASC)
 
 // Sort by creation time (descending)
-query := vaultstore.NewRecordQuery().
+query := vaultstore.RecordQuery().
     SetOrderBy("created_at").
-    SetSortOrder("desc")
+    SetSortOrder(vaultstore.DESC)
 ```
 
 ### Sortable Columns
@@ -227,7 +225,7 @@ Supported sort columns:
 
 ```go
 // Select only specific columns for performance
-query := vaultstore.NewRecordQuery().
+query := vaultstore.RecordQuery().
     SetColumns([]string{"id", "token", "created_at"})
 ```
 
@@ -236,19 +234,19 @@ query := vaultstore.NewRecordQuery().
 ```go
 // Lightweight query (no value data)
 func lightweightQuery() RecordQueryInterface {
-    return vaultstore.NewRecordQuery().
+    return vaultstore.RecordQuery().
         SetColumns([]string{"id", "token", "created_at", "expires_at"})
 }
 
 // Full query (include all data)
 func fullQuery() RecordQueryInterface {
-    return vaultstore.NewRecordQuery()
+    return vaultstore.RecordQuery()
     // No SetColumns() - selects all columns
 }
 
 // Metadata query (only timestamps)
 func metadataQuery() RecordQueryInterface {
-    return vaultstore.NewRecordQuery().
+    return vaultstore.RecordQuery().
         SetColumns([]string{"id", "created_at", "updated_at", "expires_at"})
 }
 ```
@@ -259,7 +257,7 @@ func metadataQuery() RecordQueryInterface {
 
 ```go
 // Count records matching criteria
-query := vaultstore.NewRecordQuery().
+query := vaultstore.RecordQuery().
     SetToken("abc123").
     SetCountOnly(true)
 
@@ -271,7 +269,7 @@ count, err := vault.RecordCount(context.Background(), query)
 ```go
 // Check if any records match criteria
 func exists(vault StoreInterface, token string) (bool, error) {
-    query := vaultstore.NewRecordQuery().
+    query := vaultstore.RecordQuery().
         SetToken(token).
         SetLimit(1).
         SetCountOnly(true)
@@ -316,7 +314,7 @@ fmt.Printf("Found %d records\n", count)
 
 ```go
 // Find record by token
-query := vaultstore.NewRecordQuery().
+query := vaultstore.RecordQuery().
     SetToken("my_token")
 
 record, err := vault.RecordFindByToken(context.Background(), "my_token")
@@ -329,7 +327,7 @@ if err != nil {
 
 ```go
 // Find multiple tokens, exclude deleted, sort by creation
-query := vaultstore.NewRecordQuery().
+query := vaultstore.RecordQuery().
     SetTokenIn([]string{"token1", "token2", "token3"}).
     SetSoftDeletedInclude(false).
     SetOrderBy("created_at").
@@ -347,7 +345,7 @@ if err != nil {
 ```go
 // Paginated token listing
 func listTokensPaginated(vault StoreInterface, page, pageSize int) ([]RecordInterface, error) {
-    query := vaultstore.NewRecordQuery().
+    query := vaultstore.RecordQuery().
         SetSoftDeletedInclude(false).
         SetOrderBy("created_at").
         SetSortOrder("desc").
@@ -370,7 +368,7 @@ records, err := listTokensPaginated(vault, page, pageSize)
 func searchTokens(vault StoreInterface, pattern string, limit int) ([]RecordInterface, error) {
     // This would require extending the query interface
     // For now, we can use token filtering with exact matches
-    query := vaultstore.NewRecordQuery().
+    query := vaultstore.RecordQuery().
         SetSoftDeletedInclude(false).
         SetOrderBy("token").
         SetSortOrder("asc").
@@ -387,7 +385,7 @@ func searchTokens(vault StoreInterface, pattern string, limit int) ([]RecordInte
 ```go
 // Optimize for performance by selecting only needed columns
 func getTokenMetadata(vault StoreInterface, token string) (RecordInterface, error) {
-    query := vaultstore.NewRecordQuery().
+    query := vaultstore.RecordQuery().
         SetToken(token).
         SetColumns([]string{"id", "token", "created_at", "expires_at"})
 
@@ -421,7 +419,7 @@ CREATE INDEX idx_vault_soft_deleted_at ON vault(soft_deleted_at);
 ```go
 // Efficient query for recent tokens
 func getRecentTokens(vault StoreInterface, since time.Time, limit int) ([]RecordInterface, error) {
-    query := vaultstore.NewRecordQuery().
+    query := vaultstore.RecordQuery().
         SetSoftDeletedInclude(false).
         SetOrderBy("created_at").
         SetSortOrder("desc").
@@ -461,52 +459,23 @@ func (q *recordQueryImplementation) Validate() error {
 
 ### SQL Generation
 
-The query interface uses goqu for SQL generation:
+The query interface uses the `sb` (SQL Builder) package for SQL generation. Query parameters are stored internally and converted to SQL when executed:
 
 ```go
-func (q *recordQueryImplementation) toSelectDataset(store StoreInterface) (*goqu.SelectDataset, []any, error) {
-    ds := goqu.From(store.GetVaultTableName())
-    
-    // Add column selection
-    if q.IsColumnsSet() {
-        ds = ds.Select(q.GetColumns()...)
-    }
-    
-    // Add filters
-    if q.IsTokenSet() {
-        ds = ds.Where(goqu.C("token").Eq(q.GetToken()))
-    }
-    
-    if q.IsTokenInSet() {
-        ds = ds.Where(goqu.C("token").In(q.GetTokenIn()))
-    }
-    
-    // Add soft delete filter
-    if !q.GetSoftDeletedInclude() {
-        ds = ds.Where(goqu.C("soft_deleted_at").IsNull())
-    }
-    
-    // Add ordering
-    if q.IsOrderBySet() {
-        order := goqu.C(q.GetOrderBy()).Asc()
-        if q.IsSortOrderSet() && q.GetSortOrder() == "desc" {
-            order = goqu.C(q.GetOrderBy()).Desc()
-        }
-        ds = ds.Order(order)
-    }
-    
-    // Add pagination
-    if q.IsLimitSet() {
-        ds = ds.Limit(uint(q.GetLimit()))
-    }
-    
-    if q.IsOffsetSet() {
-        ds = ds.Offset(uint(q.GetOffset()))
-    }
-    
-    return ds, nil, nil
+const (
+    ASC  = "asc"
+    DESC = "desc"
+)
+
+type recordQueryImpl struct {
+    properties map[string]interface{}
 }
+
+// Properties are stored and retrieved via getter/setter methods
+// Example: SetToken("abc") stores in properties["token"]
 ```
+
+The store implementation processes queries directly, building SQL using the `sb` package based on the query properties.
 
 ## Error Handling
 
@@ -547,7 +516,7 @@ func safeQueryExecution(vault StoreInterface, query RecordQueryInterface) ([]Rec
 
 ```go
 func TestQueryBuilder(t *testing.T) {
-    query := vaultstore.NewRecordQuery().
+    query := vaultstore.RecordQuery().
         SetToken("test_token").
         SetLimit(10).
         SetOrderBy("created_at").
@@ -568,13 +537,13 @@ func TestQueryBuilder(t *testing.T) {
 
 func TestQueryValidation(t *testing.T) {
     // Test invalid limit
-    query := vaultstore.NewRecordQuery().SetLimit(-1)
+    query := vaultstore.RecordQuery().SetLimit(-1)
     err := query.Validate()
     assert.Error(t, err)
     assert.Contains(t, err.Error(), "limit cannot be negative")
 
     // Test invalid sort order
-    query = vaultstore.NewRecordQuery().SetSortOrder("invalid")
+    query = vaultstore.RecordQuery().SetSortOrder("invalid")
     err = query.Validate()
     assert.Error(t, err)
     assert.Contains(t, err.Error(), "sort order must be 'asc' or 'desc'")
@@ -596,7 +565,7 @@ func TestQueryExecution(t *testing.T) {
     }
 
     // Test query
-    query := vaultstore.NewRecordQuery().
+    query := vaultstore.RecordQuery().
         SetTokenIn(tokens).
         SetLimit(10).
         SetOrderBy("created_at").
@@ -625,7 +594,7 @@ func TestQueryExecution(t *testing.T) {
 ### Security
 
 1. **Validate all input parameters** before query execution
-2. **Use parameterized queries** (handled by goqu)
+2. **Use parameterized queries** through the database abstraction layer
 3. **Implement proper access controls** at the application level
 4. **Log query patterns** for security monitoring
 
@@ -642,3 +611,8 @@ func TestQueryExecution(t *testing.T) {
 - [Core Store](core_store.md) - Store implementation
 - [API Reference](../api_reference.md) - Complete API documentation
 - [Database Schema](../data_stores.md) - Database structure and indexes
+
+## Changelog
+
+- **v1.1.0** (2026-02-04): Removed goqu dependency, changed factory function from `NewRecordQuery()` to `RecordQuery()`, added ASC/DESC constants, updated SQL generation documentation
+- **v1.0.0** (2026-02-03): Initial creation

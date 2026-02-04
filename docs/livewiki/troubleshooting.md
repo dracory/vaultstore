@@ -303,7 +303,7 @@ CREATE INDEX idx_vault_created_at ON vault(created_at);
 2. **Optimize Queries:**
 ```go
 // Use specific columns instead of SELECT *
-query := vaultstore.NewRecordQuery().
+query := vaultstore.RecordQuery().
     SetColumns([]string{"id", "token", "created_at"}).
     SetLimit(100)  // Limit result size
 ```
