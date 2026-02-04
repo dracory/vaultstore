@@ -42,15 +42,21 @@ func NewStore(opts NewStoreOptions) (*storeImplementation, error) {
 	}
 
 	store := &storeImplementation{
-		vaultTableName:     opts.VaultTableName,
-		vaultMetaTableName: opts.VaultMetaTableName,
-		automigrateEnabled: opts.AutomigrateEnabled,
-		db:                 opts.DB,
-		gormDB:             gormDB,
-		dbDriverName:       dbDriverName,
-		debugEnabled:       opts.DebugEnabled,
-		cryptoConfig:       cryptoConfig,
-		parallelThreshold:  opts.ParallelThreshold,
+		vaultTableName:           opts.VaultTableName,
+		vaultMetaTableName:       opts.VaultMetaTableName,
+		automigrateEnabled:       opts.AutomigrateEnabled,
+		db:                       opts.DB,
+		gormDB:                   gormDB,
+		dbDriverName:             dbDriverName,
+		debugEnabled:             opts.DebugEnabled,
+		cryptoConfig:             cryptoConfig,
+		parallelThreshold:        opts.ParallelThreshold,
+		passwordAllowEmpty:       opts.PasswordAllowEmpty,
+		passwordMinLength:        opts.PasswordMinLength,
+		passwordRequireLowercase: opts.PasswordRequireLowercase,
+		passwordRequireUppercase: opts.PasswordRequireUppercase,
+		passwordRequireNumbers:   opts.PasswordRequireNumbers,
+		passwordRequireSymbols:   opts.PasswordRequireSymbols,
 	}
 
 	if store.automigrateEnabled {

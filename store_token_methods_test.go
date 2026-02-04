@@ -15,7 +15,7 @@ func Test_Store_TokenCreate(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	token, err := store.TokenCreate(ctx, "test_val", "test_pass", 20)
+	token, err := store.TokenCreate(ctx, "test_val", "test_password_that_is_long_enough_for_security_32chars", 20)
 
 	if err != nil {
 		t.Fatalf("ValueStore Failure: [%v]", err.Error())
@@ -42,13 +42,13 @@ func Test_Store_TokenCreateCustom(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	err = store.TokenCreateCustom(ctx, "token_custom", "test_val", "test_pass")
+	err = store.TokenCreateCustom(ctx, "token_custom", "test_val", "test_password_that_is_long_enough_for_security_32chars")
 
 	if err != nil {
 		t.Fatalf("vault store: Expected [err] to be nil received [%v]", err.Error())
 	}
 
-	value, err := store.TokenRead(ctx, "token_custom", "test_pass")
+	value, err := store.TokenRead(ctx, "token_custom", "test_password_that_is_long_enough_for_security_32chars")
 
 	if err != nil {
 		t.Fatalf("vault store: Expected [err] to be nil received [%v]", err.Error())
@@ -67,7 +67,7 @@ func Test_Store_TokenDelete(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	token, err := store.TokenCreate(ctx, "test_val", "test_pass", 20)
+	token, err := store.TokenCreate(ctx, "test_val", "test_password_that_is_long_enough_for_security_32chars", 20)
 	if err != nil {
 		t.Fatalf("ValueStore Failure: [%v]", err.Error())
 	}
@@ -108,7 +108,7 @@ func TestTokenExists(t *testing.T) {
 		t.Fatal("token should not exist")
 	}
 
-	err = store.TokenCreateCustom(ctx, token, "value1", "password")
+	err = store.TokenCreateCustom(ctx, token, "value1", "test_password_that_is_long_enough_for_security_32chars")
 
 	if err != nil {
 		t.Fatal(err)
@@ -133,13 +133,13 @@ func Test_Store_TokenRead(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	id, err := store.TokenCreate(ctx, "test_val", "test_pass", 20)
+	id, err := store.TokenCreate(ctx, "test_val", "test_password_that_is_long_enough_for_security_32chars", 20)
 
 	if err != nil {
 		t.Fatal("ValueStore Failure: ", err.Error())
 	}
 
-	val, err := store.TokenRead(ctx, id, "test_pass")
+	val, err := store.TokenRead(ctx, id, "test_password_that_is_long_enough_for_security_32chars")
 	if err != nil {
 		t.Fatal("ValueRead Failure: ", err.Error())
 	}
@@ -157,13 +157,13 @@ func Test_Store_TokenUpdate(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	token, err := store.TokenCreate(ctx, "test_val", "test_pass", 20)
+	token, err := store.TokenCreate(ctx, "test_val", "test_password_that_is_long_enough_for_security_32chars", 20)
 
 	if err != nil {
 		t.Fatal("TokenCreate Failure: ", err.Error())
 	}
 
-	val, err := store.TokenRead(ctx, token, "test_pass")
+	val, err := store.TokenRead(ctx, token, "test_password_that_is_long_enough_for_security_32chars")
 	if err != nil {
 		t.Fatal("TokenRead Failure: ", err.Error())
 	}
@@ -172,13 +172,13 @@ func Test_Store_TokenUpdate(t *testing.T) {
 		t.Fatal("TokenRead Incorrect val: ", val)
 	}
 
-	err = store.TokenUpdate(ctx, token, "test_val2", "test_pass")
+	err = store.TokenUpdate(ctx, token, "test_val2", "test_password_that_is_long_enough_for_security_32chars")
 
 	if err != nil {
 		t.Fatal("TokenUpdate Failure: ", err.Error())
 	}
 
-	val, err = store.TokenRead(ctx, token, "test_pass")
+	val, err = store.TokenRead(ctx, token, "test_password_that_is_long_enough_for_security_32chars")
 
 	if err != nil {
 		t.Fatal("TokenRead Failure: ", err.Error())
@@ -201,7 +201,7 @@ func Test_TokensRead(t *testing.T) {
 
 	ctx := context.Background()
 	for i := 0; i < len(values); i++ {
-		token, err := store.TokenCreate(ctx, values[i], "test_pass", 20)
+		token, err := store.TokenCreate(ctx, values[i], "test_password_that_is_long_enough_for_security_32chars", 20)
 
 		if err != nil {
 			t.Fatal("ValueStore Failure: ", err.Error())
@@ -210,7 +210,7 @@ func Test_TokensRead(t *testing.T) {
 		tokens[i] = token
 	}
 
-	vals, err := store.TokensRead(ctx, tokens, "test_pass")
+	vals, err := store.TokensRead(ctx, tokens, "test_password_that_is_long_enough_for_security_32chars")
 
 	if err != nil {
 		t.Fatal("ValueRead Failure: ", err.Error())
@@ -238,7 +238,7 @@ func Test_Store_TokenSoftDelete(t *testing.T) {
 	}
 
 	// Create a token
-	token, err := store.TokenCreate(ctx, "test_val_soft_delete", "test_pass", 20)
+	token, err := store.TokenCreate(ctx, "test_val_soft_delete", "test_password_that_is_long_enough_for_security_32chars", 20)
 	if err != nil {
 		t.Fatalf("Test_Store_TokenSoftDelete: Failed to create token: [%v]", err.Error())
 	}
@@ -307,7 +307,7 @@ func Test_Store_TokenCreateWithExpiration(t *testing.T) {
 
 	// Create token that expires in 1 hour
 	expireTime := time.Now().UTC().Add(1 * time.Hour)
-	token, err := store.TokenCreate(ctx, "test_val", "test_pass", 20, TokenCreateOptions{
+	token, err := store.TokenCreate(ctx, "test_val", "test_password_that_is_long_enough_for_security_32chars", 20, TokenCreateOptions{
 		ExpiresAt: expireTime,
 	})
 
@@ -320,7 +320,7 @@ func Test_Store_TokenCreateWithExpiration(t *testing.T) {
 	}
 
 	// Verify token can be read
-	val, err := store.TokenRead(ctx, token, "test_pass")
+	val, err := store.TokenRead(ctx, token, "test_password_that_is_long_enough_for_security_32chars")
 	if err != nil {
 		t.Fatal("TokenRead failed: ", err.Error())
 	}
@@ -356,7 +356,7 @@ func Test_Store_TokenCreateWithExpiration_Expired(t *testing.T) {
 
 	// Create token that expires immediately (in the past)
 	expireTime := time.Now().UTC().Add(-1 * time.Second)
-	token, err := store.TokenCreate(ctx, "expired_val", "test_pass", 20, TokenCreateOptions{
+	token, err := store.TokenCreate(ctx, "expired_val", "test_password_that_is_long_enough_for_security_32chars", 20, TokenCreateOptions{
 		ExpiresAt: expireTime,
 	})
 
@@ -365,7 +365,7 @@ func Test_Store_TokenCreateWithExpiration_Expired(t *testing.T) {
 	}
 
 	// Verify token cannot be read (returns ErrTokenExpired)
-	_, err = store.TokenRead(ctx, token, "test_pass")
+	_, err = store.TokenRead(ctx, token, "test_password_that_is_long_enough_for_security_32chars")
 	if err != ErrTokenExpired {
 		t.Fatalf("Expected ErrTokenExpired but got: %v", err)
 	}
@@ -382,7 +382,7 @@ func Test_Store_TokenCreateCustomWithExpiration(t *testing.T) {
 
 	// Create custom token that expires in 1 hour
 	expireTime := time.Now().UTC().Add(1 * time.Hour)
-	err = store.TokenCreateCustom(ctx, "custom_expiring_token", "test_val", "test_pass", TokenCreateOptions{
+	err = store.TokenCreateCustom(ctx, "custom_expiring_token", "test_val", "test_password_that_is_long_enough_for_security_32chars", TokenCreateOptions{
 		ExpiresAt: expireTime,
 	})
 
@@ -391,7 +391,7 @@ func Test_Store_TokenCreateCustomWithExpiration(t *testing.T) {
 	}
 
 	// Verify token can be read
-	val, err := store.TokenRead(ctx, "custom_expiring_token", "test_pass")
+	val, err := store.TokenRead(ctx, "custom_expiring_token", "test_password_that_is_long_enough_for_security_32chars")
 	if err != nil {
 		t.Fatal("TokenRead failed: ", err.Error())
 	}
@@ -412,7 +412,7 @@ func Test_Store_TokenRead_Expired(t *testing.T) {
 
 	// Create token that expired 1 second ago
 	expireTime := time.Now().UTC().Add(-1 * time.Second)
-	token, err := store.TokenCreate(ctx, "expired_val", "test_pass", 20, TokenCreateOptions{
+	token, err := store.TokenCreate(ctx, "expired_val", "test_password_that_is_long_enough_for_security_32chars", 20, TokenCreateOptions{
 		ExpiresAt: expireTime,
 	})
 
@@ -421,7 +421,7 @@ func Test_Store_TokenRead_Expired(t *testing.T) {
 	}
 
 	// Try to read expired token
-	_, err = store.TokenRead(ctx, token, "test_pass")
+	_, err = store.TokenRead(ctx, token, "test_password_that_is_long_enough_for_security_32chars")
 	if err != ErrTokenExpired {
 		t.Fatalf("Expected ErrTokenExpired but got: %v", err)
 	}
@@ -437,14 +437,14 @@ func Test_TokensRead_SkipsExpired(t *testing.T) {
 	ctx := context.Background()
 
 	// Create valid token
-	validToken, err := store.TokenCreate(ctx, "valid_value", "test_pass", 20)
+	validToken, err := store.TokenCreate(ctx, "valid_value", "test_password_that_is_long_enough_for_security_32chars", 20)
 	if err != nil {
 		t.Fatal("Failed to create valid token: ", err.Error())
 	}
 
 	// Create expired token
 	expireTime := time.Now().UTC().Add(-1 * time.Second)
-	expiredToken, err := store.TokenCreate(ctx, "expired_value", "test_pass", 20, TokenCreateOptions{
+	expiredToken, err := store.TokenCreate(ctx, "expired_value", "test_password_that_is_long_enough_for_security_32chars", 20, TokenCreateOptions{
 		ExpiresAt: expireTime,
 	})
 	if err != nil {
@@ -453,7 +453,7 @@ func Test_TokensRead_SkipsExpired(t *testing.T) {
 
 	// Read both tokens
 	tokens := []string{validToken, expiredToken}
-	vals, err := store.TokensRead(ctx, tokens, "test_pass")
+	vals, err := store.TokensRead(ctx, tokens, "test_password_that_is_long_enough_for_security_32chars")
 
 	// Function returns partial map with only valid tokens, no error
 	if err != nil {
@@ -485,7 +485,7 @@ func Test_Store_TokenRenew(t *testing.T) {
 
 	// Create token that expires in 1 second
 	expireTime := time.Now().UTC().Add(1 * time.Second)
-	token, err := store.TokenCreate(ctx, "renewable_val", "test_pass", 20, TokenCreateOptions{
+	token, err := store.TokenCreate(ctx, "renewable_val", "test_password_that_is_long_enough_for_security_32chars", 20, TokenCreateOptions{
 		ExpiresAt: expireTime,
 	})
 
@@ -501,7 +501,7 @@ func Test_Store_TokenRenew(t *testing.T) {
 	}
 
 	// Verify token can still be read
-	val, err := store.TokenRead(ctx, token, "test_pass")
+	val, err := store.TokenRead(ctx, token, "test_password_that_is_long_enough_for_security_32chars")
 	if err != nil {
 		t.Fatalf("TokenRead after renew failed: %v", err)
 	}
@@ -559,7 +559,7 @@ func Test_Store_TokensExpiredSoftDelete(t *testing.T) {
 
 	// Create expired token
 	expireTime := time.Now().UTC().Add(-1 * time.Second)
-	token1, err := store.TokenCreate(ctx, "expired_val1", "test_pass", 20, TokenCreateOptions{
+	token1, err := store.TokenCreate(ctx, "expired_val1", "test_password_that_is_long_enough_for_security_32chars", 20, TokenCreateOptions{
 		ExpiresAt: expireTime,
 	})
 	if err != nil {
@@ -567,7 +567,7 @@ func Test_Store_TokensExpiredSoftDelete(t *testing.T) {
 	}
 
 	// Create another expired token
-	token2, err := store.TokenCreate(ctx, "expired_val2", "test_pass", 20, TokenCreateOptions{
+	token2, err := store.TokenCreate(ctx, "expired_val2", "test_password_that_is_long_enough_for_security_32chars", 20, TokenCreateOptions{
 		ExpiresAt: expireTime,
 	})
 	if err != nil {
@@ -575,7 +575,7 @@ func Test_Store_TokensExpiredSoftDelete(t *testing.T) {
 	}
 
 	// Create valid token
-	validToken, err := store.TokenCreate(ctx, "valid_val", "test_pass", 20)
+	validToken, err := store.TokenCreate(ctx, "valid_val", "test_password_that_is_long_enough_for_security_32chars", 20)
 	if err != nil {
 		t.Fatalf("Failed to create valid token: [%v]", err.Error())
 	}
@@ -619,7 +619,7 @@ func Test_Store_TokensExpiredDelete(t *testing.T) {
 
 	// Create expired token
 	expireTime := time.Now().UTC().Add(-1 * time.Second)
-	token1, err := store.TokenCreate(ctx, "expired_val1", "test_pass", 20, TokenCreateOptions{
+	token1, err := store.TokenCreate(ctx, "expired_val1", "test_password_that_is_long_enough_for_security_32chars", 20, TokenCreateOptions{
 		ExpiresAt: expireTime,
 	})
 	if err != nil {
@@ -627,7 +627,7 @@ func Test_Store_TokensExpiredDelete(t *testing.T) {
 	}
 
 	// Create valid token
-	validToken, err := store.TokenCreate(ctx, "valid_val", "test_pass", 20)
+	validToken, err := store.TokenCreate(ctx, "valid_val", "test_password_that_is_long_enough_for_security_32chars", 20)
 	if err != nil {
 		t.Fatalf("Failed to create valid token: [%v]", err.Error())
 	}
@@ -668,7 +668,7 @@ func Test_Store_TokensExpired_NoExpiration(t *testing.T) {
 	ctx := context.Background()
 
 	// Create token with no expiration (default)
-	token, err := store.TokenCreate(ctx, "no_expire_val", "test_pass", 20)
+	token, err := store.TokenCreate(ctx, "no_expire_val", "test_password_that_is_long_enough_for_security_32chars", 20)
 	if err != nil {
 		t.Fatalf("Failed to create token: [%v]", err.Error())
 	}

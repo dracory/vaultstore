@@ -15,6 +15,83 @@ import (
 // ErrTokenExpired is returned when a token has expired
 var ErrTokenExpired = errors.New("token has expired")
 
+// ErrPasswordInvalid is returned when password does not meet requirements
+var ErrPasswordInvalid = errors.New("password does not meet requirements")
+
+// validatePassword checks password against store configuration
+func (store *storeImplementation) validatePassword(password string) error {
+	// If empty passwords are allowed, skip validation
+	if store.passwordAllowEmpty && password == "" {
+		return nil
+	}
+
+	// Get minimum length (default 16 if not set)
+	minLength := store.passwordMinLength
+	if minLength <= 0 {
+		minLength = 16
+	}
+
+	if len(password) < minLength {
+		return ErrPasswordInvalid
+	}
+
+	// Skip character type checking if none are required
+	if !store.passwordRequireLowercase && !store.passwordRequireUppercase &&
+		!store.passwordRequireNumbers && !store.passwordRequireSymbols {
+		return nil
+	}
+
+	// Check character type requirements - only check what's required
+	hasLower := false
+	hasUpper := false
+	hasNumber := false
+	hasSymbol := false
+
+	for _, char := range password {
+		switch {
+		case char >= 'a' && char <= 'z':
+			if store.passwordRequireLowercase {
+				hasLower = true
+			}
+		case char >= 'A' && char <= 'Z':
+			if store.passwordRequireUppercase {
+				hasUpper = true
+			}
+		case char >= '0' && char <= '9':
+			if store.passwordRequireNumbers {
+				hasNumber = true
+			}
+		default:
+			if store.passwordRequireSymbols {
+				hasSymbol = true
+			}
+		}
+
+		// Early exit: check if all required types are found
+		if (!store.passwordRequireLowercase || hasLower) &&
+			(!store.passwordRequireUppercase || hasUpper) &&
+			(!store.passwordRequireNumbers || hasNumber) &&
+			(!store.passwordRequireSymbols || hasSymbol) {
+			break
+		}
+	}
+
+	if store.passwordRequireLowercase && !hasLower {
+		return ErrPasswordInvalid
+	}
+	if store.passwordRequireUppercase && !hasUpper {
+		return ErrPasswordInvalid
+	}
+	if store.passwordRequireNumbers && !hasNumber {
+		return ErrPasswordInvalid
+	}
+	if store.passwordRequireSymbols && !hasSymbol {
+		return ErrPasswordInvalid
+	}
+
+	return nil
+}
+
 // TokenCreateOptions contains optional parameters for token creation
 type TokenCreateOptions struct {
 	// ExpiresAt is the expiration time for the token
@@ -24,6 +101,9 @@ type TokenCreateOptions struct {
 
 // TokenCreate creates a new record and returns the token
 func (store *storeImplementation) TokenCreate(ctx context.Context, data string, password string, tokenLength int, options ...TokenCreateOptions) (token string, err error) {
+	if err := store.validatePassword(password); err != nil {
+		return "", err
+	}
 	maxAttempts := 3
 
 	for attempt := 0; attempt < maxAttempts; attempt++ {
@@ -69,6 +149,9 @@ func (store *storeImplementation) TokenCreate(ctx context.Context, data string, 
 }
 
 func (store *storeImplementation) TokenCreateCustom(ctx context.Context, token string, data string, password string, options ...TokenCreateOptions) (err error) {
+	if err := store.validatePassword(password); err != nil {
+		return err
+	}
 	// Validate token is not empty (custom tokens can have any format)
 	if token == "" {
 		return errors.New("token is empty")
@@ -310,6 +393,9 @@ func (store *storeImplementation) TokenSoftDelete(ctx context.Context, token str
 // Returns:
 // - err: An error if something went wrong
 func (store *storeImplementation) TokenUpdate(ctx context.Context, token string, value string, password string) (err error) {
+	if err := store.validatePassword(password); err != nil {
+		return err
+	}
 	if token == "" {
 		return errors.New("token is empty")
 	}
@@ -317,7 +403,7 @@ func (store *storeImplementation) TokenUpdate(ctx context.Context, token string,
 	entry, errFind := store.RecordFindByToken(ctx, token)
 
 	if errFind != nil {
-		return err
+		return errFind
 	}
 
 	if entry == nil {

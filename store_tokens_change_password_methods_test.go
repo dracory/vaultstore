@@ -29,8 +29,8 @@ func TestTokensChangePassword(t *testing.T) {
 	store := setupTestStoreForRekey(t)
 	ctx := context.Background()
 
-	oldPassword := "old-password-123"
-	newPassword := "new-password-456"
+	oldPassword := "old-password-that-is-long-enough-32-chars"
+	newPassword := "new-password-that-is-long-enough-32-chars"
 
 	// Create some records with the old password
 	tokens := []string{}
@@ -73,12 +73,12 @@ func TestTokensChangePassword_EmptyPasswords(t *testing.T) {
 	store := setupTestStoreForRekey(t)
 	ctx := context.Background()
 
-	_, err := store.TokensChangePassword(ctx, "", "new-password")
+	_, err := store.TokensChangePassword(ctx, "", "new-password-that-is-long-enough-32-chars")
 	if err == nil {
 		t.Error("expected error for empty old password")
 	}
 
-	_, err = store.TokensChangePassword(ctx, "old-password", "")
+	_, err = store.TokensChangePassword(ctx, "old-password-that-is-long-enough-32-chars", "")
 	if err == nil {
 		t.Error("expected error for empty new password")
 	}
@@ -90,7 +90,7 @@ func TestTokensChangePassword_NoMatchingRecords(t *testing.T) {
 
 	// Don't create any records, just try to rekey
 	// With pure encryption, this returns 0, nil (not an error)
-	count, err := store.TokensChangePassword(ctx, "non-existent-password", "new-password")
+	count, err := store.TokensChangePassword(ctx, "non-existent-password-that-is-long-32chars", "new-password-that-is-long-enough-32-chars")
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
 	}
@@ -105,7 +105,7 @@ func TestTokensChangePassword_NoRecords(t *testing.T) {
 	ctx := context.Background()
 
 	// Empty store - should return 0, nil
-	count, err := store.TokensChangePassword(ctx, "old-password", "new-password")
+	count, err := store.TokensChangePassword(ctx, "old-password-that-is-long-enough-32-chars", "new-password-that-is-long-enough-32-chars")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -119,9 +119,9 @@ func TestTokensChangePassword_MixedPasswords(t *testing.T) {
 	store := setupTestStoreForRekey(t)
 	ctx := context.Background()
 
-	oldPassword := "old-password-123"
-	otherPassword := "other-password-789"
-	newPassword := "new-password-456"
+	oldPassword := "old-password-that-is-long-enough-32-chars"
+	otherPassword := "other-password-that-is-long-enough-32-chars"
+	newPassword := "new-password-that-is-long-enough-32-chars"
 
 	// Create some records with the old password
 	tokensOld := []string{}
@@ -174,8 +174,8 @@ func TestTokensChangePassword_SequentialVsParallel(t *testing.T) {
 	store := setupTestStoreForRekey(t)
 	ctx := context.Background()
 
-	oldPassword := "old-password-123"
-	newPassword := "new-password-456"
+	oldPassword := "old-password-that-is-long-enough-32-chars"
+	newPassword := "new-password-that-is-long-enough-32-chars"
 
 	// Create some records (less than 10000, so sequential processing)
 	tokens := []string{}
@@ -225,8 +225,8 @@ func TestTokensChangePassword_ParallelPath(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	oldPassword := "old-password-123"
-	newPassword := "new-password-456"
+	oldPassword := "old-password-that-is-long-enough-32-chars"
+	newPassword := "new-password-that-is-long-enough-32-chars"
 
 	// Create 50 records - with threshold of 10, this triggers parallel processing
 	tokens := []string{}
@@ -269,8 +269,8 @@ func TestTokensChangePassword_ParallelPath(t *testing.T) {
 func TestTokensChangePassword_ContextCancellation(t *testing.T) {
 	store := setupTestStoreForRekey(t)
 
-	oldPassword := "old-password-123"
-	newPassword := "new-password-456"
+	oldPassword := "old-password-that-is-long-enough-32-chars"
+	newPassword := "new-password-that-is-long-enough-32-chars"
 
 	// Create records to test context cancellation
 	ctx := context.Background()

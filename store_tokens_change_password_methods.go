@@ -54,8 +54,11 @@ func (store *storeImplementation) getParallelThreshold() int {
 //   - Context cancellation: Returns number processed so far, context error
 //   - Mixed password records: Only changes password for records matching old password
 func (store *storeImplementation) TokensChangePassword(ctx context.Context, oldPassword, newPassword string) (int, error) {
-	if oldPassword == "" || newPassword == "" {
-		return 0, fmt.Errorf("passwords cannot be empty")
+	if err := store.validatePassword(oldPassword); err != nil {
+		return 0, err
+	}
+	if err := store.validatePassword(newPassword); err != nil {
+		return 0, err
 	}
 
 	// Get total count first to determine strategy
