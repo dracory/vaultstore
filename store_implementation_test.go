@@ -8,6 +8,7 @@ import (
 	"database/sql"
 
 	"github.com/dracory/database"
+	_ "github.com/glebarez/sqlite"
 )
 
 func initDB() (*sql.DB, error) {

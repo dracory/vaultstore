@@ -2,9 +2,13 @@ package vaultstore
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/dracory/database"
-	"github.com/glebarez/sqlite"
+
+	"gorm.io/driver/mysql"
+	"gorm.io/driver/postgres"
+	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )
 
@@ -33,10 +37,25 @@ func NewStore(opts NewStoreOptions) (*storeImplementation, error) {
 		cryptoConfig = DefaultCryptoConfig()
 	}
 
+	var dialector gorm.Dialector
+
+	dbType := database.DatabaseType(opts.DB)
+	switch dbType {
+	case "sqlite":
+		dialector = sqlite.New(sqlite.Config{Conn: opts.DB})
+	case "mysql":
+		dialector = mysql.New(mysql.Config{Conn: opts.DB})
+	case "postgres", "postgresql":
+		dialector = postgres.New(postgres.Config{Conn: opts.DB})
+	default:
+		return nil, fmt.Errorf("unsupported database connection: %s", dbType)
+	}
+
 	// Initialize GORM DB from existing *sql.DB using glebarez/sqlite (pure Go)
-	gormDB, err := gorm.Open(&sqlite.Dialector{
-		Conn: opts.DB,
-	}, &gorm.Config{})
+	// gormDB, err := gorm.Open(&sqlite.Dialector{
+	// 	Conn: opts.DB,
+	// }, &gorm.Config{})
+	gormDB, err := gorm.Open(dialector, &gorm.Config{})
 	if err != nil {
 		return nil, err
 	}
