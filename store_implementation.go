@@ -32,14 +32,14 @@ var _ StoreInterface = (*storeImplementation)(nil) // verify it extends the inte
 
 // AutoMigrate auto migrate
 func (store *storeImplementation) AutoMigrate() error {
-	// Use GORM's AutoMigrate with dynamic table name for vault records
-	err := store.gormDB.Table(store.vaultTableName).AutoMigrate(&gormVaultRecord{})
+	// Clean up existing records with empty tokens before creating unique index
+	err := store.cleanupEmptyTokenRecords()
 	if err != nil {
 		return err
 	}
 
-	// Clean up existing records with empty tokens after table creation
-	err = store.cleanupEmptyTokenRecords()
+	// Use GORM's AutoMigrate with dynamic table name for vault records
+	err = store.gormDB.Table(store.vaultTableName).AutoMigrate(&gormVaultRecord{})
 	if err != nil {
 		return err
 	}
