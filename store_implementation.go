@@ -38,8 +38,44 @@ func (store *storeImplementation) AutoMigrate() error {
 		return err
 	}
 
+	// Clean up existing records with empty tokens after table creation
+	err = store.cleanupEmptyTokenRecords()
+	if err != nil {
+		return err
+	}
+
 	// Always migrate the meta table
 	return store.gormDB.Table(store.vaultMetaTableName).AutoMigrate(&gormVaultMeta{})
+}
+
+// cleanupEmptyTokenRecords removes or updates records with empty tokens to prevent unique index violations
+func (store *storeImplementation) cleanupEmptyTokenRecords() error {
+	// Check if the table exists first
+	hasTable := store.gormDB.Migrator().HasTable(store.vaultTableName)
+	if !hasTable {
+		return nil
+	}
+
+	// Find all records with empty tokens
+	var records []gormVaultRecord
+	err := store.gormDB.Table(store.vaultTableName).
+		Where(COLUMN_VAULT_TOKEN + " = ''").
+		Find(&records).Error
+
+	if err != nil {
+		return err
+	}
+
+	// If no records with empty tokens, nothing to clean up
+	if len(records) == 0 {
+		return nil
+	}
+
+	// Delete records with empty tokens since they violate the unique constraint
+	// and are likely test data or improperly created records
+	return store.gormDB.Table(store.vaultTableName).
+		Where(COLUMN_VAULT_TOKEN + " = ''").
+		Delete(&gormVaultRecord{}).Error
 }
 
 // EnableDebug - enables the debug option

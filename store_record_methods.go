@@ -52,6 +52,11 @@ func (store *storeImplementation) RecordCreate(ctx context.Context, record Recor
 		return err
 	}
 
+	// Validate that token is not empty to prevent unique index violations
+	if record.GetToken() == "" {
+		return errors.New("record token cannot be empty")
+	}
+
 	record.SetCreatedAt(carbon.Now(carbon.UTC).ToDateTimeString(carbon.UTC))
 	record.SetUpdatedAt(carbon.Now(carbon.UTC).ToDateTimeString(carbon.UTC))
 
