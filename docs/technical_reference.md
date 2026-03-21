@@ -121,6 +121,82 @@ The `decode` function decrypts a value with a password:
 func decode(value string, password string) (string, error)
 ```
 
+### Token Methods
+
+The store provides various methods for token operations:
+
+#### TokenCreate
+
+```go
+func (store *storeImplementation) TokenCreate(ctx context.Context, value string, password string, tokenLength int, options ...TokenCreateOptions) (token string, err error)
+```
+
+Creates a new token and returns the token string.
+
+#### TokenCreateCustom
+
+```go
+func (store *storeImplementation) TokenCreateCustom(ctx context.Context, token string, value string, password string, options ...TokenCreateOptions) (err error)
+```
+
+Creates a new token with a custom token string.
+
+#### TokenDelete
+
+```go
+func (store *storeImplementation) TokenDelete(ctx context.Context, token string) error
+```
+
+Deletes a token from the store.
+
+#### TokenExists
+
+```go
+func (store *storeImplementation) TokenExists(ctx context.Context, token string) (bool, error)
+```
+
+Checks if a token exists.
+
+#### TokenRead
+
+```go
+func (store *storeImplementation) TokenRead(ctx context.Context, token string, password string) (string, error)
+```
+
+Reads the value of a token.
+
+#### TokenUpdate
+
+```go
+func (store *storeImplementation) TokenUpdate(ctx context.Context, token string, value string, password string) error
+```
+
+Updates the value of a token.
+
+#### TokenUpsert
+
+```go
+func (store *storeImplementation) TokenUpsert(ctx context.Context, existingToken string, value string, password string) (newToken string, err error)
+```
+
+Updates or creates a token for a given value. If `existingToken` is empty, creates a new token. If `existingToken` is provided, updates the existing token.
+
+#### TokenSoftDelete
+
+```go
+func (store *storeImplementation) TokenSoftDelete(ctx context.Context, token string) error
+```
+
+Soft deletes a token from the store.
+
+#### TokensRead
+
+```go
+func (store *storeImplementation) TokensRead(ctx context.Context, tokens []string, password string) (map[string]string, error)
+```
+
+Reads multiple tokens at once with a single database query.
+
 ### Token Generation
 
 Tokens are generated using the `GenerateToken` function, which creates a random string of the specified length:

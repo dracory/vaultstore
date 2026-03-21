@@ -11,6 +11,11 @@ This document contains the version history and changes for the VaultStore projec
 - Added BulkRekey and MigrateRecordLinks methods for efficient password rotation
 - Updated encryption from custom XOR scheme to AES-256-GCM with Argon2id KDF
 
+### 2026.03.21
+- Added TokenUpsert method for combined create/update token operations
+- Added comprehensive test coverage for TokenUpsert functionality
+- Updated documentation with TokenUpsert usage examples and API reference
+
 ## 2025
 
 ### 2025.03.13

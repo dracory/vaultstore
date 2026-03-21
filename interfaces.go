@@ -227,6 +227,8 @@ type StoreInterface interface {
 	TokenSoftDelete(ctx context.Context, token string) error
 	// TokenUpdate updates the value of a token
 	TokenUpdate(ctx context.Context, token string, value string, password string) error
+	// TokenUpsert updates or creates a token for a given value
+	TokenUpsert(ctx context.Context, existingToken string, value string, password string) (newToken string, err error)
 
 	// TokensRead reads multiple tokens at once with a single database query
 	// This is more efficient than calling TokenRead multiple times

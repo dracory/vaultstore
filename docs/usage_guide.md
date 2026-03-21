@@ -100,6 +100,36 @@ if err != nil {
 }
 ```
 
+### Upserting a Secret
+
+The `TokenUpsert` method combines create and update operations. If the existing token is empty, it creates a new token. If the existing token is provided, it updates the existing token:
+
+```go
+ctx := context.Background()
+existingToken := ""  // Empty to create, or provide existing token to update
+value := "my-secret-value"
+password := "my-password"
+
+// Create a new token if existingToken is empty
+newToken, err := store.TokenUpsert(ctx, existingToken, value, password)
+if err != nil {
+    panic(err)
+}
+
+fmt.Println("Token:", newToken)
+
+// Update existing token
+existingToken = newToken
+newValue := "my-updated-secret-value"
+updatedToken, err := store.TokenUpsert(ctx, existingToken, newValue, password)
+if err != nil {
+    panic(err)
+}
+
+// updatedToken will be the same as existingToken
+fmt.Println("Updated token:", updatedToken)
+```
+
 ### Deleting a Secret
 
 To delete a secret, use the `TokenDelete` method:

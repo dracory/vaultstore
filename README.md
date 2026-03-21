@@ -76,6 +76,17 @@ value, err := vault.TokenRead(token, "my_password")
 // Update a token's value
 err := vault.TokenUpdate(token, "new_value", "my_password")
 
+// Upsert a token (create if doesn't exist, update if it does)
+ctx := context.Background()
+existingToken := ""  // Empty to create new, or provide existing token to update
+newToken, err := vault.TokenUpsert(ctx, existingToken, "my_value", "my_password")
+// newToken: "tk_abc123def456..." (new token created)
+
+// Update existing token using upsert
+existingToken = newToken
+updatedToken, err := vault.TokenUpsert(ctx, existingToken, "updated_value", "my_password")
+// updatedToken: "tk_abc123def456..." (same token, updated value)
+
 // Read multiple tokens at once (more efficient than individual calls)
 ctx := context.Background()
 tokens := []string{"token1", "token2", "token3"}

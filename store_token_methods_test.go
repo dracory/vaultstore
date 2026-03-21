@@ -189,6 +189,119 @@ func Test_Store_TokenUpdate(t *testing.T) {
 	}
 }
 
+func Test_Store_TokenUpsert_CreatesTokenWhenMissing(t *testing.T) {
+	store, err := initStore()
+
+	if err != nil {
+		t.Fatalf("Test_Store_TokenUpsert_CreatesTokenWhenMissing: Expected [err] to be nil received [%v]", err.Error())
+	}
+
+	ctx := context.Background()
+	token, err := store.TokenUpsert(ctx, "", "test_val", "test_password_that_is_long_enough_for_security_32chars")
+
+	if err != nil {
+		t.Fatalf("TokenUpsert Failure: [%v]", err.Error())
+	}
+
+	if token == "" {
+		t.Fatal("Token expected to not be empty")
+	}
+
+	if strings.HasPrefix(token, "tk_") == false {
+		t.Fatal("Token expected to start with 'tk_' received: ", token)
+	}
+
+	if len(token) != 20 {
+		t.Fatal("Token length expected to be 20 received: ", len(token), " token: ", token)
+	}
+
+	// Verify the token exists and has the correct value
+	exists, err := store.TokenExists(ctx, token)
+	if err != nil {
+		t.Fatalf("TokenExists Failure: [%v]", err.Error())
+	}
+
+	if !exists {
+		t.Fatal("Token should exist")
+	}
+
+	value, err := store.TokenRead(ctx, token, "test_password_that_is_long_enough_for_security_32chars")
+	if err != nil {
+		t.Fatalf("TokenRead Failure: [%v]", err.Error())
+	}
+
+	if value != "test_val" {
+		t.Fatalf("Expected value 'test_val', got '%s'", value)
+	}
+}
+
+func Test_Store_TokenUpsert_UpdatesExistingToken(t *testing.T) {
+	store, err := initStore()
+
+	if err != nil {
+		t.Fatalf("Test_Store_TokenUpsert_UpdatesExistingToken: Expected [err] to be nil received [%v]", err.Error())
+	}
+
+	ctx := context.Background()
+
+	// First create a token
+	originalToken, err := store.TokenCreate(ctx, "initial_val", "test_password_that_is_long_enough_for_security_32chars", 20)
+	if err != nil {
+		t.Fatalf("TokenCreate Failure: [%v]", err.Error())
+	}
+
+	// Verify initial value
+	value, err := store.TokenRead(ctx, originalToken, "test_password_that_is_long_enough_for_security_32chars")
+	if err != nil {
+		t.Fatalf("TokenRead Failure: [%v]", err.Error())
+	}
+
+	if value != "initial_val" {
+		t.Fatalf("Expected initial value 'initial_val', got '%s'", value)
+	}
+
+	// Now update using TokenUpsert
+	updatedToken, err := store.TokenUpsert(ctx, originalToken, "updated_val", "test_password_that_is_long_enough_for_security_32chars")
+	if err != nil {
+		t.Fatalf("TokenUpsert Failure: [%v]", err.Error())
+	}
+
+	// Token should remain the same
+	if updatedToken != originalToken {
+		t.Fatalf("Expected token to remain '%s', got '%s'", originalToken, updatedToken)
+	}
+
+	// Verify the value was updated
+	value, err = store.TokenRead(ctx, originalToken, "test_password_that_is_long_enough_for_security_32chars")
+	if err != nil {
+		t.Fatalf("TokenRead Failure: [%v]", err.Error())
+	}
+
+	if value != "updated_val" {
+		t.Fatalf("Expected updated value 'updated_val', got '%s'", value)
+	}
+}
+
+func Test_Store_TokenUpsert_ReturnsErrorWhenUpdateFails(t *testing.T) {
+	store, err := initStore()
+
+	if err != nil {
+		t.Fatalf("Test_Store_TokenUpsert_ReturnsErrorWhenUpdateFails: Expected [err] to be nil received [%v]", err.Error())
+	}
+
+	ctx := context.Background()
+
+	// Try to update a token that doesn't exist
+	_, err = store.TokenUpsert(ctx, "nonexistent_token", "test_val", "test_password_that_is_long_enough_for_security_32chars")
+	if err == nil {
+		t.Fatal("Expected error when updating non-existent token")
+	}
+
+	if !strings.Contains(err.Error(), "token does not exist") {
+		t.Fatalf("Expected 'token does not exist' error, got: %v", err)
+	}
+}
+
 func Test_TokensRead(t *testing.T) {
 	store, err := initStore()
 

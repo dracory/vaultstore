@@ -485,6 +485,37 @@ func (store *storeImplementation) TokensRead(ctx context.Context, tokens []strin
 	return values, nil
 }
 
+// TokenUpsert updates or creates a token for a given value
+//
+// Business logic:
+// - If the existingToken is empty, create a new token
+// - If the existingToken is not empty, update the existing token
+//
+// Parameters:
+// - ctx: The context
+// - existingToken: The existing token
+// - value: The value to store
+// - password: The password to use for encryption
+//
+// Returns:
+// - newToken: The new token if created, or the existing token if updated
+// - error: An error if something went wrong
+func (store *storeImplementation) TokenUpsert(ctx context.Context, existingToken string, value string, password string) (newToken string, err error) {
+	if existingToken == "" {
+		token, err := store.TokenCreate(ctx, value, password, 20)
+		if err != nil {
+			return "", err
+		}
+		return token, nil
+	}
+
+	if err := store.TokenUpdate(ctx, existingToken, value, password); err != nil {
+		return "", err
+	}
+
+	return existingToken, nil
+}
+
 // Untokenize accepts a map of key token pairs and returns a map of key value pairs
 //
 // Example:
