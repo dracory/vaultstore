@@ -3,7 +3,7 @@ module github.com/dracory/vaultstore
 go 1.26
 
 require (
-	github.com/dracory/database v0.6.0
+	github.com/dracory/database v0.7.0
 	github.com/dracory/dataobject v1.6.0
 	github.com/dracory/sb v0.20.0
 	github.com/dracory/uid v1.9.0
@@ -37,7 +37,7 @@ require (
 	github.com/go-sql-driver/mysql v1.9.3 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
 	github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 // indirect
-	github.com/jackc/pgx/v5 v5.8.0 // indirect
+	github.com/jackc/pgx/v5 v5.9.0 // indirect
 	github.com/jackc/puddle/v2 v2.2.2 // indirect
 	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/jinzhu/now v1.1.5 // indirect

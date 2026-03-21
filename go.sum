@@ -10,8 +10,8 @@ github.com/creack/pty v1.1.7/go.mod h1:lj5s0c3V2DBrqTV7llrYr5NG6My20zk30Fl46Y7Do
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
-github.com/dracory/database v0.6.0 h1:5V8R2ahlL9gjgxbXXsL7alIU2wSekngYM2TjlmO8k8w=
-github.com/dracory/database v0.6.0/go.mod h1:XLWwdxQ9LL8DqJuqnp1wyzNZ47bnMYEJR38c2PanYtI=
+github.com/dracory/database v0.7.0 h1:7pZbNKOhaMOwQ9WDU4AKgqvqmmKU/x5lNGliLH4aH0k=
+github.com/dracory/database v0.7.0/go.mod h1:SySNVnsfJSo2OQOMKrnVM4D98F5h9w2xoBVKjKLUl2E=
 github.com/dracory/dataobject v1.6.0 h1:k9kVYthGqK3giZvG/HMF9wGjwY9sRLv8XJ543nsUTiE=
 github.com/dracory/dataobject v1.6.0/go.mod h1:eo0pRMmHAEpWKQo29F6TTs43Cpp7J5QRj9wiJ0eQrJ0=
 github.com/dracory/sb v0.20.0 h1:M/k6Z7UKcGf0MV48a5obe0R31nlzZyIxWBOPruxvdSc=
@@ -93,8 +93,8 @@ github.com/jackc/pgx/v4 v4.6.1-0.20200510190926-94ba730bb1e9/go.mod h1:t3/cdRQl6
 github.com/jackc/pgx/v4 v4.6.1-0.20200606145419-4e5062306904/go.mod h1:ZDaNWkt9sW1JMiNn0kdYBaLelIhw7Pg4qd+Vk6tw7Hg=
 github.com/jackc/pgx/v4 v4.10.1 h1:/6Q3ye4myIj6AaplUm+eRcz4OhK9HAvFf4ePsG40LJY=
 github.com/jackc/pgx/v4 v4.10.1/go.mod h1:QlrWebbs3kqEZPHCTGyxecvzG6tvIsYu+A5b1raylkA=
-github.com/jackc/pgx/v5 v5.8.0 h1:TYPDoleBBme0xGSAX3/+NujXXtpZn9HBONkQC7IEZSo=
-github.com/jackc/pgx/v5 v5.8.0/go.mod h1:QVeDInX2m9VyzvNeiCJVjCkNFqzsNb43204HshNSZKw=
+github.com/jackc/pgx/v5 v5.9.0 h1:T/dI+2TvmI2H8s/KH1/lXIbz1CUFk3gn5oTjr0/mBsE=
+github.com/jackc/pgx/v5 v5.9.0/go.mod h1:mal1tBGAFfLHvZzaYh77YS/eC6IX9OWbRV1QIIM0Jn4=
 github.com/jackc/puddle v0.0.0-20190413234325-e4ced69a3a2b/go.mod h1:m4B5Dj62Y0fbyuIc15OsIqK0+JU8nkqQjsgx7dvjSWk=
 github.com/jackc/puddle v0.0.0-20190608224051-11cab39313c9/go.mod h1:m4B5Dj62Y0fbyuIc15OsIqK0+JU8nkqQjsgx7dvjSWk=
 github.com/jackc/puddle v1.1.0/go.mod h1:m4B5Dj62Y0fbyuIc15OsIqK0+JU8nkqQjsgx7dvjSWk=
