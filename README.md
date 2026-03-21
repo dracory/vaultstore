@@ -63,19 +63,37 @@ Here are some basic examples of using VaultStore. For comprehensive documentatio
 ```golang
 // Create a token
 token, err := vault.TokenCreate("my_value", "my_password", 20)
+// token: "tk_abc123def456..."
 
 // Check if a token exists
 exists, err := vault.TokenExists(token)
+// exists: true
 
 // Read a value using a token
 value, err := vault.TokenRead(token, "my_password")
+// value: "my_value"
 
 // Update a token's value
 err := vault.TokenUpdate(token, "new_value", "my_password")
 
-// Bulk rekey all records with old password to new password
+// Read multiple tokens at once (more efficient than individual calls)
 ctx := context.Background()
+tokens := []string{"token1", "token2", "token3"}
+tokenValues, err := vault.TokensRead(ctx, tokens, "my_password")
+// tokenValues: map[string]string{"token1": "value1", "token2": "value2", "token3": "value3"}
+
+// Resolve multiple tokens with keys (convenience method)
+keyTokenMap := map[string]string{
+    "api_key":    "token1_here",
+    "db_config":  "token2_here", 
+    "auth_token": "token3_here",
+}
+resolvedMap, err := vault.TokensReadToResolvedMap(ctx, keyTokenMap, "my_password")
+// resolvedMap: map[string]string{"api_key": "api_value", "db_config": "db_string", "auth_token": "auth_secret"}
+
+// Bulk rekey all records with old password to new password
 count, err := vault.BulkRekey(ctx, "old_password", "new_password")
+// count: 5 (number of records rekeyed)
 
 // Hard delete a token
 err := vault.TokenDelete(token)
@@ -83,13 +101,6 @@ err := vault.TokenDelete(token)
 // Soft delete a token
 err := vault.TokenSoftDelete(token)
 ```
-
-## 🌏  Development in the Cloud 
-
-Click any of the buttons below to start a new development environment to contribute to the codebase without having to install anything on your machine:
-
-[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/gouniverse/vaultstore)
-[![Open in Gitpod](https://gitpod.io/button/open-in-gitpod.svg)](https://gitpod.io/#https://github.com/dracory/vaultstore)
 
 ## Changelog
 

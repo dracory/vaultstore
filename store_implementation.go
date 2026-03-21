@@ -6,6 +6,7 @@ import (
 	"database/sql"
 
 	"github.com/dracory/database"
+	"github.com/samber/lo"
 	"gorm.io/gorm"
 )
 
@@ -101,4 +102,54 @@ func (store *storeImplementation) toQuerableContext(context context.Context) dat
 	}
 
 	return database.Context(context, store.db)
+}
+
+// TokensReadToResolvedMap accepts a map of key token pairs and returns a map of key value pairs
+//
+// Example:
+//
+//	keyTokenMap := map[string]string{
+//	  "key1": "token1",
+//	  "key2": "token2",
+//	}
+//
+//	resolvedMap, err := TokensReadToResolvedMap(keyTokenMap)
+//	if err != nil {
+//	  return
+//	}
+//
+//	fmt.Println(resolvedMap)
+//	// map[key1:value1 key2:value2]
+//
+// Parameters:
+// - ctx (context.Context): The context to use for the operation
+// - password (string): The vault key to use for decryption
+// - keyTokenMap (map[string]string): A map of key token pairs
+//
+// Returns:
+// - resolvedMap (map[string]string): A map of key value pairs
+// - err (error): An error if one occurred
+func (store *storeImplementation) TokensReadToResolvedMap(ctx context.Context, keyTokenMap map[string]string, password string) (map[string]string, error) {
+	// Handle empty input map
+	if len(keyTokenMap) == 0 {
+		return map[string]string{}, nil
+	}
+
+	tokens := lo.Values(keyTokenMap)
+	values, err := store.TokensRead(ctx, tokens, password)
+
+	if err != nil {
+		return map[string]string{}, err
+	}
+
+	resolved := lo.MapValues(keyTokenMap, func(token string, key string) string {
+		return values[token]
+	})
+
+	// Filter out any keys where the token was not found (expired or missing)
+	filtered := lo.PickBy(resolved, func(key string, value string) bool {
+		return value != ""
+	})
+
+	return filtered, nil
 }

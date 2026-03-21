@@ -705,3 +705,169 @@ func Test_Store_TokensExpired_NoExpiration(t *testing.T) {
 		t.Fatal("Non-expiring token should still exist after hard delete attempt")
 	}
 }
+
+func Test_Store_TokensReadToResolvedMap(t *testing.T) {
+	store, err := initStore()
+	if err != nil {
+		t.Fatalf("Test_Store_TokensReadToResolvedMap: Expected [err] to be nil received [%v]", err.Error())
+	}
+
+	ctx := context.Background()
+	password := "test_password_that_is_long_enough_for_security_32chars"
+
+	// Create test tokens
+	token1, err := store.TokenCreate(ctx, "value1", password, 20)
+	if err != nil {
+		t.Fatalf("Failed to create token1: [%v]", err.Error())
+	}
+
+	token2, err := store.TokenCreate(ctx, "value2", password, 20)
+	if err != nil {
+		t.Fatalf("Failed to create token2: [%v]", err.Error())
+	}
+
+	token3, err := store.TokenCreate(ctx, "value3", password, 20)
+	if err != nil {
+		t.Fatalf("Failed to create token3: [%v]", err.Error())
+	}
+
+	// Test successful resolution
+	keyTokenMap := map[string]string{
+		"key1": token1,
+		"key2": token2,
+		"key3": token3,
+	}
+
+	resolved, err := store.TokensReadToResolvedMap(ctx, keyTokenMap, password)
+	if err != nil {
+		t.Fatalf("TokensReadToResolvedMap failed: [%v]", err.Error())
+	}
+
+	// Verify all values were resolved correctly
+	if resolved["key1"] != "value1" {
+		t.Fatalf("Expected key1 to resolve to 'value1', got '%s'", resolved["key1"])
+	}
+	if resolved["key2"] != "value2" {
+		t.Fatalf("Expected key2 to resolve to 'value2', got '%s'", resolved["key2"])
+	}
+	if resolved["key3"] != "value3" {
+		t.Fatalf("Expected key3 to resolve to 'value3', got '%s'", resolved["key3"])
+	}
+
+	// Test with empty map
+	emptyMap := map[string]string{}
+	resolvedEmpty, err := store.TokensReadToResolvedMap(ctx, emptyMap, password)
+	if err != nil {
+		t.Fatalf("TokensReadToResolvedMap with empty map failed: [%v]", err.Error())
+	}
+	if len(resolvedEmpty) != 0 {
+		t.Fatalf("Expected empty result for empty input, got %d items", len(resolvedEmpty))
+	}
+
+	// Test with non-existent token
+	keyTokenMapWithInvalid := map[string]string{
+		"key1": token1,
+		"key2": "non_existent_token",
+	}
+
+	_, err = store.TokensReadToResolvedMap(ctx, keyTokenMapWithInvalid, password)
+	if err == nil {
+		t.Fatal("Expected error for non-existent token, got nil")
+	}
+	if !strings.Contains(err.Error(), "missing tokens") {
+		t.Fatalf("Expected 'missing tokens' error, got: [%v]", err.Error())
+	}
+
+	// Test with wrong password
+	_, err = store.TokensReadToResolvedMap(ctx, keyTokenMap, "wrong_password")
+	if err == nil {
+		t.Fatal("Expected error for wrong password, got nil")
+	}
+}
+
+func Test_Store_TokensReadToResolvedMap_SingleToken(t *testing.T) {
+	store, err := initStore()
+	if err != nil {
+		t.Fatalf("Test_Store_TokensReadToResolvedMap_SingleToken: Expected [err] to be nil received [%v]", err.Error())
+	}
+
+	ctx := context.Background()
+	password := "test_password_that_is_long_enough_for_security_32chars"
+
+	// Create single test token
+	token, err := store.TokenCreate(ctx, "single_value", password, 20)
+	if err != nil {
+		t.Fatalf("Failed to create token: [%v]", err.Error())
+	}
+
+	// Test single token resolution
+	keyTokenMap := map[string]string{
+		"single_key": token,
+	}
+
+	resolved, err := store.TokensReadToResolvedMap(ctx, keyTokenMap, password)
+	if err != nil {
+		t.Fatalf("TokensReadToResolvedMap failed: [%v]", err.Error())
+	}
+
+	if resolved["single_key"] != "single_value" {
+		t.Fatalf("Expected single_key to resolve to 'single_value', got '%s'", resolved["single_key"])
+	}
+
+	if len(resolved) != 1 {
+		t.Fatalf("Expected 1 item in result, got %d", len(resolved))
+	}
+}
+
+func Test_Store_TokensReadToResolvedMap_ExpiredToken(t *testing.T) {
+	store, err := initStore()
+	if err != nil {
+		t.Fatalf("Test_Store_TokensReadToResolvedMap_ExpiredToken: Expected [err] to be nil received [%v]", err.Error())
+	}
+
+	ctx := context.Background()
+	password := "test_password_that_is_long_enough_for_security_32chars"
+
+	// Create token that expires immediately
+	expiredToken, err := store.TokenCreate(ctx, "expired_value", password, 20)
+	if err != nil {
+		t.Fatalf("Failed to create expired token: [%v]", err.Error())
+	}
+
+	// Manually expire the token by updating its expiration time
+	err = store.TokenRenew(ctx, expiredToken, time.Now().Add(-time.Hour))
+	if err != nil {
+		t.Fatalf("Failed to expire token: [%v]", err.Error())
+	}
+
+	// Create valid token
+	validToken, err := store.TokenCreate(ctx, "valid_value", password, 20)
+	if err != nil {
+		t.Fatalf("Failed to create valid token: [%v]", err.Error())
+	}
+
+	// Test resolution with expired token
+	keyTokenMap := map[string]string{
+		"expired_key": expiredToken,
+		"valid_key":   validToken,
+	}
+
+	resolved, err := store.TokensReadToResolvedMap(ctx, keyTokenMap, password)
+	if err != nil {
+		t.Fatalf("TokensReadToResolvedMap with expired token failed: [%v]", err.Error())
+	}
+
+	// Expired token should not be in result
+	if _, exists := resolved["expired_key"]; exists {
+		t.Fatal("Expired token should not be present in resolved map")
+	}
+
+	// Valid token should still resolve
+	if resolved["valid_key"] != "valid_value" {
+		t.Fatalf("Expected valid_key to resolve to 'valid_value', got '%s'", resolved["valid_key"])
+	}
+
+	if len(resolved) != 1 {
+		t.Fatalf("Expected 1 item in result (expired token skipped), got %d", len(resolved))
+	}
+}
