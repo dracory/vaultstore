@@ -1,7 +1,5 @@
 package vaultstore
 
-import "strconv"
-
 // gormVaultRecord is the internal GORM model for vault records
 // This struct is used internally for database operations only
 type gormVaultRecord struct {
@@ -59,27 +57,4 @@ type gormVaultMeta struct {
 // TableName returns the table name for the GORM model
 func (gormVaultMeta) TableName() string {
 	return "" // Will be set dynamically via store.metaTableName
-}
-
-// toMetaInterface converts a GORM record to a MetaInterface
-func (g *gormVaultMeta) toMetaInterface() MetaInterface {
-	data := map[string]string{
-		"id":          strconv.FormatUint(uint64(g.ID), 10),
-		"object_type": g.ObjectType,
-		"object_id":   g.ObjectID,
-		"meta_key":    g.Key,
-		"meta_value":  g.Value,
-	}
-	return NewMetaFromExistingData(data)
-}
-
-// fromMetaInterface creates a GORM record from a MetaInterface
-func fromMetaInterface(m MetaInterface) *gormVaultMeta {
-	return &gormVaultMeta{
-		ID:         m.GetID(),
-		ObjectType: m.GetObjectType(),
-		ObjectID:   m.GetObjectID(),
-		Key:        m.GetKey(),
-		Value:      m.GetValue(),
-	}
 }
