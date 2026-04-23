@@ -1,15 +1,17 @@
 package vaultstore
 
+import "github.com/dromara/carbon/v2"
+
 // gormVaultRecord is the internal GORM model for vault records
 // This struct is used internally for database operations only
 type gormVaultRecord struct {
-	ID            string `gorm:"primaryKey;size:40;column:id"`
-	Token         string `gorm:"uniqueIndex;size:40;column:vault_token"` // TOKEN_MAX_TOTAL_LENGTH
-	Value         string `gorm:"type:longtext;column:vault_value"`
-	CreatedAt     string `gorm:"size:20;column:created_at"`
-	UpdatedAt     string `gorm:"size:20;column:updated_at"`
-	ExpiresAt     string `gorm:"size:20;column:expires_at"`
-	SoftDeletedAt string `gorm:"size:20;column:soft_deleted_at"`
+	ID            string `gorm:"primaryKey;size:40;column:id;not null"`
+	Token         string `gorm:"uniqueIndex;size:40;column:vault_token;not null"` // TOKEN_MAX_TOTAL_LENGTH
+	Value         string `gorm:"type:longtext;column:vault_value;not null"`
+	CreatedAt     string `gorm:"type:datetime;column:created_at;not null"`
+	UpdatedAt     string `gorm:"type:datetime;column:updated_at;not null"`
+	ExpiresAt     string `gorm:"type:datetime;column:expires_at;not null"`
+	SoftDeletedAt string `gorm:"type:datetime;column:soft_deleted_at;not null"`
 }
 
 // TableName returns the table name for the GORM model
@@ -19,14 +21,35 @@ func (gormVaultRecord) TableName() string {
 
 // toRecordInterface converts a GORM record to a RecordInterface
 func (g *gormVaultRecord) toRecordInterface() RecordInterface {
+	// Set defaults for empty datetime fields to ensure NOT NULL constraint compliance
+	createdAt := g.CreatedAt
+	if createdAt == "" {
+		createdAt = carbon.Now(carbon.UTC).ToDateTimeString(carbon.UTC)
+	}
+
+	updatedAt := g.UpdatedAt
+	if updatedAt == "" {
+		updatedAt = carbon.Now(carbon.UTC).ToDateTimeString(carbon.UTC)
+	}
+
+	expiresAt := g.ExpiresAt
+	if expiresAt == "" {
+		expiresAt = MAX_DATETIME
+	}
+
+	softDeletedAt := g.SoftDeletedAt
+	if softDeletedAt == "" {
+		softDeletedAt = MAX_DATETIME
+	}
+
 	data := map[string]string{
 		COLUMN_ID:              g.ID,
 		COLUMN_VAULT_TOKEN:     g.Token,
 		COLUMN_VAULT_VALUE:     g.Value,
-		COLUMN_CREATED_AT:      g.CreatedAt,
-		COLUMN_UPDATED_AT:      g.UpdatedAt,
-		COLUMN_EXPIRES_AT:      g.ExpiresAt,
-		COLUMN_SOFT_DELETED_AT: g.SoftDeletedAt,
+		COLUMN_CREATED_AT:      createdAt,
+		COLUMN_UPDATED_AT:      updatedAt,
+		COLUMN_EXPIRES_AT:      expiresAt,
+		COLUMN_SOFT_DELETED_AT: softDeletedAt,
 	}
 	return NewRecordFromExistingData(data)
 }

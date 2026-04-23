@@ -50,3 +50,39 @@ func Test_NewRecordFromExistingData(t *testing.T) {
 		}
 	}
 }
+
+func Test_gormVaultRecord_toRecordInterface_EmptyDatetimes(t *testing.T) {
+	// Test that toRecordInterface sets defaults for empty datetime fields
+	gormRecord := &gormVaultRecord{
+		ID:            "test-id",
+		Token:         "test-token",
+		Value:         "test-value",
+		CreatedAt:     "", // Empty - should get default
+		UpdatedAt:     "", // Empty - should get default
+		ExpiresAt:     "", // Empty - should get MAX_DATETIME
+		SoftDeletedAt: "", // Empty - should get MAX_DATETIME
+	}
+
+	record := gormRecord.toRecordInterface()
+
+	if record == nil {
+		t.Fatal("Expected non-nil record")
+	}
+
+	// Verify that empty datetime fields were set to defaults
+	if record.GetCreatedAt() == "" {
+		t.Fatal("Expected CreatedAt to be set to default, got empty string")
+	}
+
+	if record.GetUpdatedAt() == "" {
+		t.Fatal("Expected UpdatedAt to be set to default, got empty string")
+	}
+
+	if record.GetExpiresAt() != MAX_DATETIME {
+		t.Fatalf("Expected ExpiresAt [%s] received [%v]", MAX_DATETIME, record.GetExpiresAt())
+	}
+
+	if record.GetSoftDeletedAt() != MAX_DATETIME {
+		t.Fatalf("Expected SoftDeletedAt [%s] received [%v]", MAX_DATETIME, record.GetSoftDeletedAt())
+	}
+}

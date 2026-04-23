@@ -6,6 +6,7 @@ import (
 	"database/sql"
 
 	"github.com/dracory/database"
+	"github.com/dromara/carbon/v2"
 	"github.com/samber/lo"
 	"gorm.io/gorm"
 )
@@ -35,6 +36,12 @@ var _ StoreInterface = (*storeImplementation)(nil) // verify it extends the inte
 func (store *storeImplementation) AutoMigrate() error {
 	// Clean up existing records with empty tokens before creating unique index
 	err := store.cleanupEmptyTokenRecords()
+	if err != nil {
+		return err
+	}
+
+	// Clean up existing NULL datetime fields before adding NOT NULL constraints
+	err = store.cleanupNullDatetimeFields()
 	if err != nil {
 		return err
 	}
@@ -77,6 +84,30 @@ func (store *storeImplementation) cleanupEmptyTokenRecords() error {
 	return store.gormDB.Table(store.vaultTableName).
 		Where(COLUMN_VAULT_TOKEN + " = ''").
 		Delete(&gormVaultRecord{}).Error
+}
+
+// cleanupNullDatetimeFields updates NULL datetime fields to default values to prevent NOT NULL constraint violations
+func (store *storeImplementation) cleanupNullDatetimeFields() error {
+	// Check if the table exists first
+	hasTable := store.gormDB.Migrator().HasTable(store.vaultTableName)
+	if !hasTable {
+		return nil
+	}
+
+	now := carbon.Now(carbon.UTC).ToDateTimeString(carbon.UTC)
+
+	// Update NULL datetime fields to default values
+	return store.gormDB.Table(store.vaultTableName).
+		Where(COLUMN_CREATED_AT + " IS NULL OR " +
+			COLUMN_UPDATED_AT + " IS NULL OR " +
+			COLUMN_EXPIRES_AT + " IS NULL OR " +
+			COLUMN_SOFT_DELETED_AT + " IS NULL").
+		Updates(map[string]interface{}{
+			COLUMN_CREATED_AT:      now,
+			COLUMN_UPDATED_AT:      now,
+			COLUMN_EXPIRES_AT:      MAX_DATETIME,
+			COLUMN_SOFT_DELETED_AT: MAX_DATETIME,
+		}).Error
 }
 
 // EnableDebug - enables the debug option
