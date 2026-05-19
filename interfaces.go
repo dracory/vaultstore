@@ -2,6 +2,7 @@ package vaultstore
 
 import (
 	"context"
+	"database/sql"
 	"time"
 )
 
@@ -172,17 +173,29 @@ type RecordQueryInterface interface {
 // - Bulk token operations for improved performance
 // - Vault settings and metadata management
 type StoreInterface interface {
-	// AutoMigrate automatically migrates the database schema
-	AutoMigrate() error
-	// EnableDebug enables or disables debug mode
-	EnableDebug(debug bool)
-
 	// GetDbDriverName returns the database driver name
 	GetDbDriverName() string
-	// GetVaultTableName returns the vault table name
-	GetVaultTableName() string
+
 	// GetMetaTableName returns the meta table name
 	GetMetaTableName() string
+
+	// SetMetaTableName sets the meta table name
+	SetMetaTableName(tableName string)
+
+	// GetVaultTableName returns the vault table name
+	GetVaultTableName() string
+
+	// SetVaultTableName sets the vault table name
+	SetVaultTableName(tableName string)
+
+	// MigrateDown drops the vault and meta tables
+	MigrateDown(tx ...*sql.Tx) error
+
+	// MigrateUp creates the vault and meta tables
+	MigrateUp(tx ...*sql.Tx) error
+
+	// EnableDebug enables or disables debug mode
+	EnableDebug(debug bool)
 
 	// RecordCount returns the count of records matching the query
 	RecordCount(ctx context.Context, query RecordQueryInterface) (int64, error)

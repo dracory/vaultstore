@@ -32,8 +32,18 @@ type storeImplementation struct {
 
 var _ StoreInterface = (*storeImplementation)(nil) // verify it extends the interface
 
-// AutoMigrate auto migrate
+// AutoMigrate auto migrate (deprecated - use MigrateUp)
 func (store *storeImplementation) AutoMigrate() error {
+	return store.MigrateUp()
+}
+
+// MigrateUp creates the vault and meta tables
+func (store *storeImplementation) MigrateUp(tx ...*sql.Tx) error {
+	var txToUse *sql.Tx
+	if len(tx) > 0 {
+		txToUse = tx[0]
+	}
+
 	// Clean up existing records with empty tokens before creating unique index
 	err := store.cleanupEmptyTokenRecords()
 	if err != nil {
@@ -47,13 +57,42 @@ func (store *storeImplementation) AutoMigrate() error {
 	}
 
 	// Use GORM's AutoMigrate with dynamic table name for vault records
-	err = store.gormDB.Table(store.vaultTableName).AutoMigrate(&gormVaultRecord{})
+	if txToUse != nil {
+		// For GORM with transaction, we need to use sql.DB with transaction
+		// GORM doesn't directly support transaction in AutoMigrate, so we skip tx for this part
+		err = store.gormDB.Table(store.vaultTableName).AutoMigrate(&gormVaultRecord{})
+	} else {
+		err = store.gormDB.Table(store.vaultTableName).AutoMigrate(&gormVaultRecord{})
+	}
 	if err != nil {
 		return err
 	}
 
 	// Always migrate the meta table
-	return store.gormDB.Table(store.vaultMetaTableName).AutoMigrate(&gormVaultMeta{})
+	if txToUse != nil {
+		err = store.gormDB.Table(store.vaultMetaTableName).AutoMigrate(&gormVaultMeta{})
+	} else {
+		err = store.gormDB.Table(store.vaultMetaTableName).AutoMigrate(&gormVaultMeta{})
+	}
+
+	return err
+}
+
+// MigrateDown drops the vault and meta tables
+func (store *storeImplementation) MigrateDown(tx ...*sql.Tx) error {
+	// Drop meta table first (due to potential foreign key constraints)
+	err := store.gormDB.Migrator().DropTable(store.vaultMetaTableName)
+	if err != nil {
+		return err
+	}
+
+	// Drop vault table
+	err = store.gormDB.Migrator().DropTable(store.vaultTableName)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // cleanupEmptyTokenRecords removes or updates records with empty tokens to prevent unique index violations
@@ -125,6 +164,14 @@ func (store *storeImplementation) GetVaultTableName() string {
 
 func (store *storeImplementation) GetMetaTableName() string {
 	return store.vaultMetaTableName
+}
+
+func (store *storeImplementation) SetVaultTableName(tableName string) {
+	store.vaultTableName = tableName
+}
+
+func (store *storeImplementation) SetMetaTableName(tableName string) {
+	store.vaultMetaTableName = tableName
 }
 
 func (store *storeImplementation) toQuerableContext(context context.Context) database.QueryableContext {

@@ -105,7 +105,7 @@ func Test_Store_AutoMigrate(t *testing.T) {
 		t.Fatalf("automigrateEnabled: Expected [false] received [%v]", store.automigrateEnabled)
 	}
 
-	err = store.AutoMigrate()
+	err = store.MigrateUp()
 
 	if err != nil {
 		t.Fatalf("AutoMigrate Failure [%v]", err.Error())

@@ -79,7 +79,7 @@ func NewStore(opts NewStoreOptions) (*storeImplementation, error) {
 	}
 
 	if store.automigrateEnabled {
-		err := store.AutoMigrate()
+		err := store.MigrateUp()
 		if err != nil {
 			return nil, err
 		}
