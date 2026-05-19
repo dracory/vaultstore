@@ -189,10 +189,10 @@ type StoreInterface interface {
 	SetVaultTableName(tableName string)
 
 	// MigrateDown drops the vault and meta tables
-	MigrateDown(tx ...*sql.Tx) error
+	MigrateDown(ctx context.Context, tx ...*sql.Tx) error
 
 	// MigrateUp creates the vault and meta tables
-	MigrateUp(tx ...*sql.Tx) error
+	MigrateUp(ctx context.Context, tx ...*sql.Tx) error
 
 	// EnableDebug enables or disables debug mode
 	EnableDebug(debug bool)

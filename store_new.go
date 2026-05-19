@@ -1,6 +1,7 @@
 package vaultstore
 
 import (
+	"context"
 	"errors"
 	"fmt"
 
@@ -79,7 +80,7 @@ func NewStore(opts NewStoreOptions) (*storeImplementation, error) {
 	}
 
 	if store.automigrateEnabled {
-		err := store.MigrateUp()
+		err := store.MigrateUp(context.Background())
 		if err != nil {
 			return nil, err
 		}

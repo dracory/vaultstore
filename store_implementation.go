@@ -34,11 +34,11 @@ var _ StoreInterface = (*storeImplementation)(nil) // verify it extends the inte
 
 // AutoMigrate auto migrate (deprecated - use MigrateUp)
 func (store *storeImplementation) AutoMigrate() error {
-	return store.MigrateUp()
+	return store.MigrateUp(context.Background())
 }
 
 // MigrateUp creates the vault and meta tables
-func (store *storeImplementation) MigrateUp(tx ...*sql.Tx) error {
+func (store *storeImplementation) MigrateUp(ctx context.Context, tx ...*sql.Tx) error {
 	var txToUse *sql.Tx
 	if len(tx) > 0 {
 		txToUse = tx[0]
@@ -79,7 +79,7 @@ func (store *storeImplementation) MigrateUp(tx ...*sql.Tx) error {
 }
 
 // MigrateDown drops the vault and meta tables
-func (store *storeImplementation) MigrateDown(tx ...*sql.Tx) error {
+func (store *storeImplementation) MigrateDown(ctx context.Context, tx ...*sql.Tx) error {
 	// Drop meta table first (due to potential foreign key constraints)
 	err := store.gormDB.Migrator().DropTable(store.vaultMetaTableName)
 	if err != nil {
