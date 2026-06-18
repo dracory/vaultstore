@@ -3,9 +3,9 @@ package vaultstore
 import (
 	"context"
 	"errors"
+	"time"
 
 	"github.com/dromara/carbon/v2"
-	"gorm.io/gorm/clause"
 )
 
 func (store *storeImplementation) RecordCount(ctx context.Context, query RecordQueryInterface) (int64, error) {
@@ -13,33 +13,10 @@ func (store *storeImplementation) RecordCount(ctx context.Context, query RecordQ
 		return -1, err
 	}
 
+	q := store.buildQuery(query)
+
 	var count int64
-
-	db := store.gormDB.WithContext(ctx).Table(store.vaultTableName)
-
-	// Apply filters from query
-	if query.IsIDSet() && query.GetID() != "" {
-		db = db.Where(COLUMN_ID+" = ?", query.GetID())
-	}
-
-	if query.IsTokenSet() && query.GetToken() != "" {
-		db = db.Where(COLUMN_VAULT_TOKEN+" = ?", query.GetToken())
-	}
-
-	if query.IsIDInSet() && len(query.GetIDIn()) > 0 {
-		db = db.Where(COLUMN_ID+" IN ?", query.GetIDIn())
-	}
-
-	if query.IsTokenInSet() && len(query.GetTokenIn()) > 0 {
-		db = db.Where(COLUMN_VAULT_TOKEN+" IN ?", query.GetTokenIn())
-	}
-
-	// Handle soft delete filtering
-	if !query.IsSoftDeletedIncludeSet() {
-		db = db.Where(COLUMN_SOFT_DELETED_AT+" > ?", carbon.Now(carbon.UTC).ToDateTimeString())
-	}
-
-	err := db.Count(&count).Error
+	err := q.Table(store.vaultTableName).Count(&count)
 	if err != nil {
 		return -1, err
 	}
@@ -57,17 +34,27 @@ func (store *storeImplementation) RecordCreate(ctx context.Context, record Recor
 		return errors.New("record token cannot be empty")
 	}
 
-	record.SetCreatedAt(carbon.Now(carbon.UTC).ToDateTimeString(carbon.UTC))
-	record.SetUpdatedAt(carbon.Now(carbon.UTC).ToDateTimeString(carbon.UTC))
-
-	gormRecord := fromRecordInterface(record)
-
-	err := store.gormDB.WithContext(ctx).Table(store.vaultTableName).Create(gormRecord).Error
-	if err != nil {
-		return err
+	if record.GetCreatedAt() == "" {
+		record.SetCreatedAt(carbon.Now(carbon.UTC).ToDateTimeString(carbon.UTC))
+	}
+	if record.GetUpdatedAt() == "" {
+		record.SetUpdatedAt(carbon.Now(carbon.UTC).ToDateTimeString(carbon.UTC))
+	}
+	if record.GetSoftDeletedAt() == "" {
+		record.SetSoftDeletedAt(MAX_DATETIME)
 	}
 
-	return nil
+	row := map[string]any{
+		COLUMN_ID:              record.GetID(),
+		COLUMN_VAULT_TOKEN:     record.GetToken(),
+		COLUMN_VAULT_VALUE:     record.GetValue(),
+		COLUMN_CREATED_AT:      record.GetCreatedAtCarbon().StdTime(),
+		COLUMN_UPDATED_AT:      record.GetUpdatedAtCarbon().StdTime(),
+		COLUMN_EXPIRES_AT:      record.GetExpiresAtCarbon().StdTime(),
+		COLUMN_SOFT_DELETED_AT: record.GetSoftDeletedAtCarbon().StdTime(),
+	}
+
+	return store.db.Query().Table(store.vaultTableName).Create(row)
 }
 
 func (store *storeImplementation) RecordDeleteByID(ctx context.Context, recordID string) error {
@@ -79,15 +66,12 @@ func (store *storeImplementation) RecordDeleteByID(ctx context.Context, recordID
 		return errors.New("record id is empty")
 	}
 
-	err := store.gormDB.WithContext(ctx).Table(store.vaultTableName).
+	_, err := store.db.Query().
+		Table(store.vaultTableName).
 		Where(COLUMN_ID+" = ?", recordID).
-		Delete(&gormVaultRecord{}).Error
+		Delete()
 
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return err
 }
 
 func (store *storeImplementation) RecordDeleteByToken(ctx context.Context, token string) error {
@@ -99,15 +83,12 @@ func (store *storeImplementation) RecordDeleteByToken(ctx context.Context, token
 		return errors.New("token is empty")
 	}
 
-	err := store.gormDB.WithContext(ctx).Table(store.vaultTableName).
+	_, err := store.db.Query().
+		Table(store.vaultTableName).
 		Where(COLUMN_VAULT_TOKEN+" = ?", token).
-		Delete(&gormVaultRecord{}).Error
+		Delete()
 
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return err
 }
 
 // RecordFindByID finds an entry by ID
@@ -120,7 +101,6 @@ func (store *storeImplementation) RecordFindByID(ctx context.Context, id string)
 		return nil, errors.New("record id is empty")
 	}
 
-	// Use RecordList with a query to ensure consistent soft delete handling
 	query := RecordQuery().SetID(id).SetLimit(1)
 	records, err := store.RecordList(ctx, query)
 	if err != nil {
@@ -135,16 +115,6 @@ func (store *storeImplementation) RecordFindByID(ctx context.Context, id string)
 }
 
 // RecordFindByToken finds a record entity by token
-//
-// # If the supplied token is empty, an error is returned
-//
-// Parameters:
-// - ctx: The context
-// - token: The token to find
-//
-// Returns:
-// - record: The record found
-// - err: An error if something went wrong
 func (store *storeImplementation) RecordFindByToken(ctx context.Context, token string) (RecordInterface, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
@@ -154,7 +124,6 @@ func (store *storeImplementation) RecordFindByToken(ctx context.Context, token s
 		return nil, errors.New("token is empty")
 	}
 
-	// Use the query interface to properly handle soft deletion
 	records, err := store.RecordList(ctx, RecordQuery().SetToken(token).SetLimit(1))
 	if err != nil {
 		return nil, err
@@ -177,67 +146,34 @@ func (store *storeImplementation) RecordList(ctx context.Context, query RecordQu
 		return []RecordInterface{}, err
 	}
 
-	var gormRecords []gormVaultRecord
+	q := store.buildQuery(query)
 
-	db := store.gormDB.WithContext(ctx).Table(store.vaultTableName)
-
-	// Select specific columns if set
-	if query.IsColumnsSet() && len(query.GetColumns()) > 0 {
-		db = db.Select(query.GetColumns())
+	type recordRow struct {
+		ID            string    `db:"id"`
+		Token         string    `db:"vault_token"`
+		Value         string    `db:"vault_value"`
+		CreatedAt     time.Time `db:"created_at"`
+		UpdatedAt     time.Time `db:"updated_at"`
+		ExpiresAt     time.Time `db:"expires_at"`
+		SoftDeletedAt time.Time `db:"soft_deleted_at"`
 	}
 
-	// Apply filters
-	if query.IsIDSet() && query.GetID() != "" {
-		db = db.Where(COLUMN_ID+" = ?", query.GetID())
-	}
-
-	if query.IsTokenSet() && query.GetToken() != "" {
-		db = db.Where(COLUMN_VAULT_TOKEN+" = ?", query.GetToken())
-	}
-
-	if query.IsIDInSet() && len(query.GetIDIn()) > 0 {
-		db = db.Where(COLUMN_ID+" IN ?", query.GetIDIn())
-	}
-
-	if query.IsTokenInSet() && len(query.GetTokenIn()) > 0 {
-		db = db.Where(COLUMN_VAULT_TOKEN+" IN ?", query.GetTokenIn())
-	}
-
-	// Handle soft delete filtering
-	if !query.IsSoftDeletedIncludeSet() {
-		db = db.Where(COLUMN_SOFT_DELETED_AT+" > ?", carbon.Now(carbon.UTC).ToDateTimeString())
-	}
-
-	// Apply ordering
-	if query.IsOrderBySet() && query.GetOrderBy() != "" {
-		sortOrder := DESC
-		if query.IsSortOrderSet() && query.GetSortOrder() != "" {
-			sortOrder = query.GetSortOrder()
-		}
-		if sortOrder == ASC {
-			db = db.Order(clause.OrderByColumn{Column: clause.Column{Name: query.GetOrderBy()}, Desc: false})
-		} else {
-			db = db.Order(clause.OrderByColumn{Column: clause.Column{Name: query.GetOrderBy()}, Desc: true})
-		}
-	}
-
-	// Apply limit and offset
-	if query.IsLimitSet() && query.GetLimit() > 0 && !query.IsCountOnlySet() {
-		db = db.Limit(query.GetLimit())
-	}
-
-	if query.IsOffsetSet() && query.GetOffset() > 0 && !query.IsCountOnlySet() {
-		db = db.Offset(query.GetOffset())
-	}
-
-	err = db.Find(&gormRecords).Error
-	if err != nil {
+	var rows []recordRow
+	if err := q.Table(store.vaultTableName).Get(&rows); err != nil {
 		return []RecordInterface{}, err
 	}
 
-	list := make([]RecordInterface, len(gormRecords))
-	for i, gr := range gormRecords {
-		list[i] = gr.toRecordInterface()
+	list := make([]RecordInterface, 0, len(rows))
+	for _, r := range rows {
+		o := &recordImplementation{}
+		o.SetID(r.ID)
+		o.SetToken(r.Token)
+		o.SetValue(r.Value)
+		o.CreatedAtField.CreatedAt = r.CreatedAt
+		o.UpdatedAtField.UpdatedAt = r.UpdatedAt
+		o.ExpiresAtField = r.ExpiresAt
+		o.SoftDeletesMaxDate.SoftDeletedAt = r.SoftDeletedAt
+		list = append(list, o)
 	}
 
 	return list, nil
@@ -253,7 +189,6 @@ func (store *storeImplementation) RecordSoftDelete(ctx context.Context, record R
 		return errors.New("record is nil")
 	}
 
-	// Set the soft_deleted_at field to the current time
 	record.SetSoftDeletedAt(carbon.Now(carbon.UTC).ToDateTimeString(carbon.UTC))
 
 	return store.RecordUpdate(ctx, record)
@@ -269,7 +204,6 @@ func (store *storeImplementation) RecordSoftDeleteByID(ctx context.Context, reco
 		return errors.New("record id is empty")
 	}
 
-	// Find the record first
 	record, err := store.RecordFindByID(ctx, recordID)
 	if err != nil {
 		return err
@@ -292,7 +226,6 @@ func (store *storeImplementation) RecordSoftDeleteByToken(ctx context.Context, t
 		return errors.New("token is empty")
 	}
 
-	// Find the record first
 	record, err := store.RecordFindByToken(ctx, token)
 	if err != nil {
 		return err
@@ -320,27 +253,18 @@ func (store *storeImplementation) RecordUpdate(ctx context.Context, record Recor
 
 	record.SetUpdatedAt(carbon.Now(carbon.UTC).ToDateTimeString(carbon.UTC))
 
-	dataChanged := record.DataChanged()
-	delete(dataChanged, COLUMN_ID) // ID is not updateable
-	delete(dataChanged, "hash")    // Hash is not updateable
-
-	if len(dataChanged) < 1 {
-		return nil
+	row := map[string]any{
+		COLUMN_VAULT_TOKEN:     record.GetToken(),
+		COLUMN_VAULT_VALUE:     record.GetValue(),
+		COLUMN_EXPIRES_AT:      record.GetExpiresAtCarbon().StdTime(),
+		COLUMN_UPDATED_AT:      record.GetUpdatedAtCarbon().StdTime(),
+		COLUMN_SOFT_DELETED_AT: record.GetSoftDeletedAtCarbon().StdTime(),
 	}
 
-	// Convert dataChanged map to updates for GORM
-	updates := make(map[string]interface{})
-	for key, value := range dataChanged {
-		updates[key] = value
-	}
-
-	err := store.gormDB.WithContext(ctx).Table(store.vaultTableName).
+	_, err := store.db.Query().
+		Table(store.vaultTableName).
 		Where(COLUMN_ID+" = ?", record.GetID()).
-		Updates(updates).Error
+		Update(row)
 
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return err
 }

@@ -1,86 +1,84 @@
 package vaultstore
 
 import (
-	"strconv"
-
-	"github.com/dracory/dataobject"
+	neatuid "github.com/dracory/neat/support/uid"
 )
 
-// metaImplementation is the internal struct for VaultMeta operations
+// == CLASS =====================================================================
+
 type metaImplementation struct {
-	dataobject.DataObject
+	IDField         string `db:"id"`
+	ObjectTypeField string `db:"object_type"`
+	ObjectIDField   string `db:"object_id"`
+	KeyField        string `db:"meta_key"`
+	ValueField      string `db:"meta_value"`
 }
 
-// == CONSTRUCTORS ===========================================================
+// == CONSTRUCTORS ==============================================================
 
-// NewMeta creates a new metadata entry
 func NewMeta() MetaInterface {
-	d := (&metaImplementation{}).
-		SetObjectType("").
-		SetObjectID("").
-		SetKey("").
-		SetValue("")
-
-	return d
-}
-
-// NewMetaFromExistingData creates a metadata entry from existing data
-func NewMetaFromExistingData(data map[string]string) MetaInterface {
 	o := &metaImplementation{}
-	o.Hydrate(data)
+	o.SetID(neatuid.GenerateShortID())
+	o.SetObjectType("")
+	o.SetObjectID("")
+	o.SetKey("")
+	o.SetValue("")
 	return o
 }
 
-// == GETTERS ================================================================
-
-func (m *metaImplementation) GetID() uint {
-	idStr := m.Data()["id"]
-	if idStr == "" {
-		return 0
-	}
-	id, _ := strconv.ParseUint(idStr, 10, 64)
-	return uint(id)
+func NewMetaFromExistingData(data map[string]string) MetaInterface {
+	o := &metaImplementation{}
+	o.SetID(data[COLUMN_ID])
+	o.SetObjectType(data[COLUMN_OBJECT_TYPE])
+	o.SetObjectID(data[COLUMN_OBJECT_ID])
+	o.SetKey(data[COLUMN_META_KEY])
+	o.SetValue(data[COLUMN_META_VALUE])
+	return o
 }
 
-func (m *metaImplementation) GetObjectType() string {
-	return m.Data()["object_type"]
+// == SETTERS AND GETTERS =======================================================
+
+func (o *metaImplementation) GetID() string {
+	return o.IDField
 }
 
-func (m *metaImplementation) GetObjectID() string {
-	return m.Data()["object_id"]
+func (o *metaImplementation) SetID(id string) MetaInterface {
+	o.IDField = id
+	return o
 }
 
-func (m *metaImplementation) GetKey() string {
-	return m.Data()["meta_key"]
+func (o *metaImplementation) GetObjectType() string {
+	return o.ObjectTypeField
 }
 
-func (m *metaImplementation) GetValue() string {
-	return m.Data()["meta_value"]
+func (o *metaImplementation) SetObjectType(objectType string) MetaInterface {
+	o.ObjectTypeField = objectType
+	return o
 }
 
-// == SETTERS ================================================================
-
-func (m *metaImplementation) SetID(id uint) MetaInterface {
-	m.Set("id", strconv.FormatUint(uint64(id), 10))
-	return m
+func (o *metaImplementation) GetObjectID() string {
+	return o.ObjectIDField
 }
 
-func (m *metaImplementation) SetObjectType(objectType string) MetaInterface {
-	m.Set("object_type", objectType)
-	return m
+func (o *metaImplementation) SetObjectID(objectID string) MetaInterface {
+	o.ObjectIDField = objectID
+	return o
 }
 
-func (m *metaImplementation) SetObjectID(objectID string) MetaInterface {
-	m.Set("object_id", objectID)
-	return m
+func (o *metaImplementation) GetKey() string {
+	return o.KeyField
 }
 
-func (m *metaImplementation) SetKey(key string) MetaInterface {
-	m.Set("meta_key", key)
-	return m
+func (o *metaImplementation) SetKey(key string) MetaInterface {
+	o.KeyField = key
+	return o
 }
 
-func (m *metaImplementation) SetValue(value string) MetaInterface {
-	m.Set("meta_value", value)
-	return m
+func (o *metaImplementation) GetValue() string {
+	return o.ValueField
+}
+
+func (o *metaImplementation) SetValue(value string) MetaInterface {
+	o.ValueField = value
+	return o
 }

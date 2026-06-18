@@ -2,21 +2,22 @@ package vaultstore
 
 import (
 	"context"
-
 	"database/sql"
+	"log/slog"
+	"os"
 
-	"github.com/dracory/database"
+	"github.com/dracory/neat"
+	contractsorm "github.com/dracory/neat/contracts/database/orm"
+	contractsschema "github.com/dracory/neat/contracts/database/schema"
 	"github.com/dromara/carbon/v2"
 	"github.com/samber/lo"
-	"gorm.io/gorm"
 )
 
 // Store defines a session store
 type storeImplementation struct {
 	vaultTableName           string
 	vaultMetaTableName       string
-	db                       *sql.DB
-	gormDB                   *gorm.DB
+	db                       *neat.Database
 	dbDriverName             string
 	automigrateEnabled       bool
 	debugEnabled             bool
@@ -28,6 +29,7 @@ type storeImplementation struct {
 	passwordRequireUppercase bool // Require at least one uppercase letter (default: false)
 	passwordRequireNumbers   bool // Require at least one number (default: false)
 	passwordRequireSymbols   bool // Require at least one symbol (default: false)
+	logger                   *slog.Logger
 }
 
 var _ StoreInterface = (*storeImplementation)(nil) // verify it extends the interface
@@ -39,119 +41,89 @@ func (store *storeImplementation) AutoMigrate() error {
 
 // MigrateUp creates the vault and meta tables
 func (store *storeImplementation) MigrateUp(ctx context.Context, tx ...*sql.Tx) error {
-	var txToUse *sql.Tx
-	if len(tx) > 0 {
-		txToUse = tx[0]
-	}
-
-	// Clean up existing records with empty tokens before creating unique index
-	err := store.cleanupEmptyTokenRecords()
-	if err != nil {
-		return err
-	}
-
-	// Clean up existing NULL datetime fields before adding NOT NULL constraints
-	err = store.cleanupNullDatetimeFields()
-	if err != nil {
-		return err
-	}
-
-	// Use GORM's AutoMigrate with dynamic table name for vault records
-	if txToUse != nil {
-		// For GORM with transaction, we need to use sql.DB with transaction
-		// GORM doesn't directly support transaction in AutoMigrate, so we skip tx for this part
-		err = store.gormDB.Table(store.vaultTableName).AutoMigrate(&gormVaultRecord{})
+	if store.db.Schema().HasTable(store.vaultTableName) {
+		if store.debugEnabled {
+			store.logger.Info("MigrateUp: table already exists", "table", store.vaultTableName)
+		}
 	} else {
-		err = store.gormDB.Table(store.vaultTableName).AutoMigrate(&gormVaultRecord{})
-	}
-	if err != nil {
-		return err
+		err := store.db.Schema().Create(store.vaultTableName, func(table contractsschema.Blueprint) {
+			table.String(COLUMN_ID, 40)
+			table.Primary(COLUMN_ID)
+			table.String(COLUMN_VAULT_TOKEN, 40)
+			table.Unique(COLUMN_VAULT_TOKEN)
+			table.Text(COLUMN_VAULT_VALUE)
+			table.DateTime(COLUMN_CREATED_AT)
+			table.DateTime(COLUMN_UPDATED_AT)
+			table.DateTime(COLUMN_EXPIRES_AT)
+			table.DateTime(COLUMN_SOFT_DELETED_AT)
+		})
+		if err != nil {
+			if store.debugEnabled {
+				store.logger.Error("MigrateUp failed", "table", store.vaultTableName, "error", err)
+			}
+			return err
+		}
 	}
 
-	// Always migrate the meta table
-	if txToUse != nil {
-		err = store.gormDB.Table(store.vaultMetaTableName).AutoMigrate(&gormVaultMeta{})
+	if store.db.Schema().HasTable(store.vaultMetaTableName) {
+		if store.debugEnabled {
+			store.logger.Info("MigrateUp: table already exists", "table", store.vaultMetaTableName)
+		}
 	} else {
-		err = store.gormDB.Table(store.vaultMetaTableName).AutoMigrate(&gormVaultMeta{})
-	}
-
-	return err
-}
-
-// MigrateDown drops the vault and meta tables
-func (store *storeImplementation) MigrateDown(ctx context.Context, tx ...*sql.Tx) error {
-	// Drop meta table first (due to potential foreign key constraints)
-	err := store.gormDB.Migrator().DropTable(store.vaultMetaTableName)
-	if err != nil {
-		return err
-	}
-
-	// Drop vault table
-	err = store.gormDB.Migrator().DropTable(store.vaultTableName)
-	if err != nil {
-		return err
+		err := store.db.Schema().Create(store.vaultMetaTableName, func(table contractsschema.Blueprint) {
+			table.String(COLUMN_ID, 40)
+			table.Primary(COLUMN_ID)
+			table.String(COLUMN_OBJECT_TYPE, 50)
+			table.String(COLUMN_OBJECT_ID, 64)
+			table.String(COLUMN_META_KEY, 50)
+			table.Text(COLUMN_META_VALUE)
+		})
+		if err != nil {
+			if store.debugEnabled {
+				store.logger.Error("MigrateUp failed", "table", store.vaultMetaTableName, "error", err)
+			}
+			return err
+		}
 	}
 
 	return nil
 }
 
-// cleanupEmptyTokenRecords removes or updates records with empty tokens to prevent unique index violations
-func (store *storeImplementation) cleanupEmptyTokenRecords() error {
-	// Check if the table exists first
-	hasTable := store.gormDB.Migrator().HasTable(store.vaultTableName)
-	if !hasTable {
-		return nil
+// MigrateDown drops the vault and meta tables
+func (store *storeImplementation) MigrateDown(ctx context.Context, tx ...*sql.Tx) error {
+	if store.db.Schema().HasTable(store.vaultMetaTableName) {
+		err := store.db.Schema().Drop(store.vaultMetaTableName)
+		if err != nil {
+			if store.debugEnabled {
+				store.logger.Error("MigrateDown failed", "table", store.vaultMetaTableName, "error", err)
+			}
+			return err
+		}
 	}
 
-	// Find all records with empty tokens
-	var records []gormVaultRecord
-	err := store.gormDB.Table(store.vaultTableName).
-		Where(COLUMN_VAULT_TOKEN + " = ''").
-		Find(&records).Error
-
-	if err != nil {
-		return err
+	if store.db.Schema().HasTable(store.vaultTableName) {
+		err := store.db.Schema().Drop(store.vaultTableName)
+		if err != nil {
+			if store.debugEnabled {
+				store.logger.Error("MigrateDown failed", "table", store.vaultTableName, "error", err)
+			}
+			return err
+		}
 	}
 
-	// If no records with empty tokens, nothing to clean up
-	if len(records) == 0 {
-		return nil
-	}
-
-	// Delete records with empty tokens since they violate the unique constraint
-	// and are likely test data or improperly created records
-	return store.gormDB.Table(store.vaultTableName).
-		Where(COLUMN_VAULT_TOKEN + " = ''").
-		Delete(&gormVaultRecord{}).Error
-}
-
-// cleanupNullDatetimeFields updates NULL datetime fields to default values to prevent NOT NULL constraint violations
-func (store *storeImplementation) cleanupNullDatetimeFields() error {
-	// Check if the table exists first
-	hasTable := store.gormDB.Migrator().HasTable(store.vaultTableName)
-	if !hasTable {
-		return nil
-	}
-
-	now := carbon.Now(carbon.UTC).ToDateTimeString(carbon.UTC)
-
-	// Update NULL datetime fields to default values
-	return store.gormDB.Table(store.vaultTableName).
-		Where(COLUMN_CREATED_AT + " IS NULL OR " +
-			COLUMN_UPDATED_AT + " IS NULL OR " +
-			COLUMN_EXPIRES_AT + " IS NULL OR " +
-			COLUMN_SOFT_DELETED_AT + " IS NULL").
-		Updates(map[string]interface{}{
-			COLUMN_CREATED_AT:      now,
-			COLUMN_UPDATED_AT:      now,
-			COLUMN_EXPIRES_AT:      MAX_DATETIME,
-			COLUMN_SOFT_DELETED_AT: MAX_DATETIME,
-		}).Error
+	return nil
 }
 
 // EnableDebug - enables the debug option
 func (store *storeImplementation) EnableDebug(debug bool) {
 	store.debugEnabled = debug
+	if debug {
+		store.db.EnableDebug()
+		store.logger = slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug}))
+	} else {
+		store.db.DisableDebug()
+		store.logger = slog.New(slog.NewTextHandler(os.Stdout, nil))
+	}
 }
 
 func (store *storeImplementation) GetDbDriverName() string {
@@ -172,14 +144,6 @@ func (store *storeImplementation) SetVaultTableName(tableName string) {
 
 func (store *storeImplementation) SetMetaTableName(tableName string) {
 	store.vaultMetaTableName = tableName
-}
-
-func (store *storeImplementation) toQuerableContext(context context.Context) database.QueryableContext {
-	if database.IsQueryableContext(context) {
-		return context.(database.QueryableContext)
-	}
-
-	return database.Context(context, store.db)
 }
 
 // TokensReadToResolvedMap accepts a map of key token pairs and returns a map of key value pairs
@@ -230,4 +194,65 @@ func (store *storeImplementation) TokensReadToResolvedMap(ctx context.Context, k
 	})
 
 	return filtered, nil
+}
+
+// == QUERY BUILDER ============================================================
+
+// buildQuery builds a neat query from the record query interface.
+func (store *storeImplementation) buildQuery(query RecordQueryInterface) contractsorm.Query {
+	q := store.db.Query()
+
+	if query == nil {
+		return q
+	}
+
+	if query.IsIDSet() && query.GetID() != "" {
+		q = q.Where(COLUMN_ID+" = ?", query.GetID())
+	}
+
+	if query.IsTokenSet() && query.GetToken() != "" {
+		q = q.Where(COLUMN_VAULT_TOKEN+" = ?", query.GetToken())
+	}
+
+	if query.IsIDInSet() && len(query.GetIDIn()) > 0 {
+		args := make([]any, len(query.GetIDIn()))
+		for i, id := range query.GetIDIn() {
+			args[i] = id
+		}
+		q = q.WhereIn(COLUMN_ID, args)
+	}
+
+	if query.IsTokenInSet() && len(query.GetTokenIn()) > 0 {
+		args := make([]any, len(query.GetTokenIn()))
+		for i, token := range query.GetTokenIn() {
+			args[i] = token
+		}
+		q = q.WhereIn(COLUMN_VAULT_TOKEN, args)
+	}
+
+	if query.IsLimitSet() && query.GetLimit() > 0 && !query.IsCountOnlySet() {
+		q = q.Limit(query.GetLimit())
+	}
+
+	if query.IsOffsetSet() && query.GetOffset() > 0 && !query.IsCountOnlySet() {
+		q = q.Offset(query.GetOffset())
+	}
+
+	if query.IsOrderBySet() && query.GetOrderBy() != "" {
+		sortOrder := DESC
+		if query.IsSortOrderSet() && query.GetSortOrder() != "" {
+			sortOrder = query.GetSortOrder()
+		}
+		q = q.OrderBy(query.GetOrderBy(), sortOrder)
+	}
+
+	// Handle soft delete filtering
+	if query.IsSoftDeletedIncludeSet() && query.GetSoftDeletedInclude() {
+		q = q.WithSoftDeleted()
+	} else {
+		// By default, filter out soft-deleted records
+		q = q.Where(COLUMN_SOFT_DELETED_AT+" = ?", carbon.Parse(MAX_DATETIME, carbon.UTC).StdTime())
+	}
+
+	return q
 }

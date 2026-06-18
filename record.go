@@ -1,99 +1,162 @@
 package vaultstore
 
 import (
-	"github.com/dracory/dataobject"
-	"github.com/dracory/uid"
+	"time"
+
+	"github.com/dracory/neat/database/orm"
+	"github.com/dracory/neat/database/soft_delete"
+	neatuid "github.com/dracory/neat/support/uid"
 	"github.com/dromara/carbon/v2"
 )
 
-// == CLASS ==================================================================
+// == CLASS =====================================================================
 
 type recordImplementation struct {
-	dataobject.DataObject
+	orm.ShortID
+
+	TokenField     string    `db:"vault_token"`
+	ValueField     string    `db:"vault_value"`
+	ExpiresAtField time.Time `db:"expires_at"`
+	CreatedAtField orm.CreatedAt
+	UpdatedAtField orm.UpdatedAt
+	soft_delete.SoftDeletesMaxDate
 }
 
-// == CONSTRUCTORS ===========================================================
+// == CONSTRUCTORS ==============================================================
 
 func NewRecord() RecordInterface {
-	d := (&recordImplementation{}).
-		SetID(uid.HumanUid()).
-		SetCreatedAt(carbon.Now(carbon.UTC).ToDateTimeString(carbon.UTC)).
-		SetUpdatedAt(carbon.Now(carbon.UTC).ToDateTimeString(carbon.UTC)).
-		SetExpiresAt(MAX_DATETIME).
-		SetSoftDeletedAt(MAX_DATETIME)
-
-	return d
+	o := &recordImplementation{}
+	o.SetID(neatuid.GenerateShortID())
+	o.SetToken("")
+	o.SetValue("")
+	o.SetCreatedAt(carbon.Now(carbon.UTC).ToDateTimeString(carbon.UTC))
+	o.SetUpdatedAt(carbon.Now(carbon.UTC).ToDateTimeString(carbon.UTC))
+	o.SetExpiresAt(MAX_DATETIME)
+	o.SetSoftDeletedAt(MAX_DATETIME)
+	return o
 }
 
 func NewRecordFromExistingData(data map[string]string) RecordInterface {
 	o := &recordImplementation{}
-	o.Hydrate(data)
+	o.SetID(data[COLUMN_ID])
+	o.SetToken(data[COLUMN_VAULT_TOKEN])
+	o.SetValue(data[COLUMN_VAULT_VALUE])
+	if v, ok := data[COLUMN_EXPIRES_AT]; ok {
+		o.SetExpiresAt(v)
+	}
+	if v, ok := data[COLUMN_CREATED_AT]; ok {
+		o.SetCreatedAt(v)
+	}
+	if v, ok := data[COLUMN_UPDATED_AT]; ok {
+		o.SetUpdatedAt(v)
+	}
+	if v, ok := data[COLUMN_SOFT_DELETED_AT]; ok {
+		o.SetSoftDeletedAt(v)
+	}
 	return o
 }
 
-// == METHODS ================================================================
+// == SETTERS AND GETTERS =======================================================
 
-// == SETTERS AND GETTERS ====================================================
-
-func (v *recordImplementation) GetCreatedAt() string {
-	return v.Get(COLUMN_CREATED_AT)
+func (o *recordImplementation) GetID() string {
+	return o.ShortID.ID
 }
 
-func (v *recordImplementation) SetCreatedAt(createdAt string) RecordInterface {
-	v.Set(COLUMN_CREATED_AT, createdAt)
-	return v
+func (o *recordImplementation) SetID(id string) RecordInterface {
+	o.ShortID.ID = id
+	return o
 }
 
-func (v *recordImplementation) GetExpiresAt() string {
-	return v.Get(COLUMN_EXPIRES_AT)
+func (o *recordImplementation) GetToken() string {
+	return o.TokenField
 }
 
-func (v *recordImplementation) SetExpiresAt(expiresAt string) RecordInterface {
-	v.Set(COLUMN_EXPIRES_AT, expiresAt)
-	return v
+func (o *recordImplementation) SetToken(token string) RecordInterface {
+	o.TokenField = token
+	return o
 }
 
-func (v *recordImplementation) GetSoftDeletedAt() string {
-	return v.Get(COLUMN_SOFT_DELETED_AT)
+func (o *recordImplementation) GetValue() string {
+	return o.ValueField
 }
 
-func (v *recordImplementation) SetSoftDeletedAt(softDeletedAt string) RecordInterface {
-	v.Set(COLUMN_SOFT_DELETED_AT, softDeletedAt)
-	return v
+func (o *recordImplementation) SetValue(value string) RecordInterface {
+	o.ValueField = value
+	return o
 }
 
-func (v *recordImplementation) GetID() string {
-	return v.Get(COLUMN_ID)
+func (o *recordImplementation) GetExpiresAt() string {
+	if o.ExpiresAtField.IsZero() {
+		return ""
+	}
+	return carbon.CreateFromStdTime(o.ExpiresAtField).ToDateTimeString()
 }
 
-func (v *recordImplementation) SetID(id string) RecordInterface {
-	v.Set(COLUMN_ID, id)
-	return v
+func (o *recordImplementation) GetExpiresAtCarbon() *carbon.Carbon {
+	return carbon.CreateFromStdTime(o.ExpiresAtField)
 }
 
-func (v *recordImplementation) GetToken() string {
-	return v.Get(COLUMN_VAULT_TOKEN)
+func (o *recordImplementation) SetExpiresAt(expiresAt string) RecordInterface {
+	if expiresAt == "" {
+		return o
+	}
+	o.ExpiresAtField = carbon.Parse(expiresAt, carbon.UTC).StdTime()
+	return o
 }
 
-func (v *recordImplementation) SetToken(token string) RecordInterface {
-	v.Set(COLUMN_VAULT_TOKEN, token)
-	return v
+func (o *recordImplementation) GetCreatedAt() string {
+	if o.CreatedAtField.CreatedAt.IsZero() {
+		return ""
+	}
+	return carbon.CreateFromStdTime(o.CreatedAtField.CreatedAt).ToDateTimeString()
 }
 
-func (v *recordImplementation) GetUpdatedAt() string {
-	return v.Get(COLUMN_UPDATED_AT)
+func (o *recordImplementation) GetCreatedAtCarbon() *carbon.Carbon {
+	return carbon.CreateFromStdTime(o.CreatedAtField.CreatedAt)
 }
 
-func (v *recordImplementation) SetUpdatedAt(updatedAt string) RecordInterface {
-	v.Set(COLUMN_UPDATED_AT, updatedAt)
-	return v
+func (o *recordImplementation) SetCreatedAt(createdAt string) RecordInterface {
+	if createdAt == "" {
+		return o
+	}
+	o.CreatedAtField.CreatedAt = carbon.Parse(createdAt, carbon.UTC).StdTime()
+	return o
 }
 
-func (v *recordImplementation) GetValue() string {
-	return v.Get(COLUMN_VAULT_VALUE)
+func (o *recordImplementation) GetUpdatedAt() string {
+	if o.UpdatedAtField.UpdatedAt.IsZero() {
+		return ""
+	}
+	return carbon.CreateFromStdTime(o.UpdatedAtField.UpdatedAt).ToDateTimeString()
 }
 
-func (v *recordImplementation) SetValue(value string) RecordInterface {
-	v.Set(COLUMN_VAULT_VALUE, value)
-	return v
+func (o *recordImplementation) GetUpdatedAtCarbon() *carbon.Carbon {
+	return carbon.CreateFromStdTime(o.UpdatedAtField.UpdatedAt)
+}
+
+func (o *recordImplementation) SetUpdatedAt(updatedAt string) RecordInterface {
+	if updatedAt == "" {
+		return o
+	}
+	o.UpdatedAtField.UpdatedAt = carbon.Parse(updatedAt, carbon.UTC).StdTime()
+	return o
+}
+
+func (o *recordImplementation) GetSoftDeletedAt() string {
+	if o.SoftDeletesMaxDate.SoftDeletedAt.IsZero() {
+		return ""
+	}
+	return carbon.CreateFromStdTime(o.SoftDeletesMaxDate.SoftDeletedAt).ToDateTimeString()
+}
+
+func (o *recordImplementation) GetSoftDeletedAtCarbon() *carbon.Carbon {
+	return carbon.CreateFromStdTime(o.SoftDeletesMaxDate.SoftDeletedAt)
+}
+
+func (o *recordImplementation) SetSoftDeletedAt(deletedAt string) RecordInterface {
+	if deletedAt == "" {
+		return o
+	}
+	o.SoftDeletesMaxDate.SoftDeletedAt = carbon.Parse(deletedAt, carbon.UTC).StdTime()
+	return o
 }

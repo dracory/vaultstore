@@ -22,7 +22,7 @@ func setupTestStoreForRekey(t *testing.T) *storeImplementation {
 		t.Fatalf("NewStore: Expected [err] to be nil received [%v]", err.Error())
 	}
 
-	return store
+	return store.(*storeImplementation)
 }
 
 func TestTokensChangePassword(t *testing.T) {

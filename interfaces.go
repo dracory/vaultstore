@@ -4,29 +4,34 @@ import (
 	"context"
 	"database/sql"
 	"time"
+
+	"github.com/dromara/carbon/v2"
 )
 
 // RecordInterface defines the methods that a Record must implement.
 // It provides access to record data, timestamps, and metadata.
 type RecordInterface interface {
-	// Data returns the record data as a map
-	Data() map[string]string
-	// DataChanged returns the changed data as a map
-	DataChanged() map[string]string
-
 	// Getters
 	// GetCreatedAt returns the created at timestamp
 	GetCreatedAt() string
+	// GetCreatedAtCarbon returns the created at timestamp as a carbon object
+	GetCreatedAtCarbon() *carbon.Carbon
 	// GetExpiresAt returns the expires at timestamp
 	GetExpiresAt() string
+	// GetExpiresAtCarbon returns the expires at timestamp as a carbon object
+	GetExpiresAtCarbon() *carbon.Carbon
 	// GetSoftDeletedAt returns the soft deleted at timestamp
 	GetSoftDeletedAt() string
+	// GetSoftDeletedAtCarbon returns the soft deleted at timestamp as a carbon object
+	GetSoftDeletedAtCarbon() *carbon.Carbon
 	// GetID returns the record ID
 	GetID() string
 	// GetToken returns the record token
 	GetToken() string
 	// GetUpdatedAt returns the updated at timestamp
 	GetUpdatedAt() string
+	// GetUpdatedAtCarbon returns the updated at timestamp as a carbon object
+	GetUpdatedAtCarbon() *carbon.Carbon
 	// GetValue returns the record value
 	GetValue() string
 
@@ -50,14 +55,9 @@ type RecordInterface interface {
 // MetaInterface defines the methods that a VaultMeta must implement.
 // It provides access to metadata for vault objects including keys and values.
 type MetaInterface interface {
-	// Data returns the meta data as a map
-	Data() map[string]string
-	// DataChanged returns the changed meta data as a map
-	DataChanged() map[string]string
-
 	// Getters
 	// GetID returns the meta ID
-	GetID() uint
+	GetID() string
 	// GetObjectType returns the object type
 	GetObjectType() string
 	// GetObjectID returns the object ID
@@ -69,7 +69,7 @@ type MetaInterface interface {
 
 	// Setters
 	// SetID sets the meta ID
-	SetID(id uint) MetaInterface
+	SetID(id string) MetaInterface
 	// SetObjectType sets the object type
 	SetObjectType(objectType string) MetaInterface
 	// SetObjectID sets the object ID

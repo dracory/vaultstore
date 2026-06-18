@@ -7,8 +7,7 @@ import (
 
 	"database/sql"
 
-	"github.com/dracory/database"
-	_ "github.com/glebarez/sqlite"
+	_ "modernc.org/sqlite"
 )
 
 func initDB() (*sql.DB, error) {
@@ -63,8 +62,9 @@ func TestWithAutoMigrateFalse(t *testing.T) {
 		t.Fatalf("automigrateEnabled: Expected [err] to be nill received [%v]", errAutomigrateFalse.Error())
 	}
 
-	if storeAutomigrateFalse.automigrateEnabled != false {
-		t.Fatalf("automigrateEnabled: Expected [false] received [%v]", storeAutomigrateFalse.automigrateEnabled)
+	sImplFalse := storeAutomigrateFalse.(*storeImplementation)
+	if sImplFalse.automigrateEnabled != false {
+		t.Fatalf("automigrateEnabled: Expected [false] received [%v]", sImplFalse.automigrateEnabled)
 	}
 
 	storeAutomigrateTrue, errAutomigrateTrue := NewStore(NewStoreOptions{
@@ -78,8 +78,9 @@ func TestWithAutoMigrateFalse(t *testing.T) {
 		t.Fatalf("automigrateEnabled: Expected [err] to be nill received [%v]", errAutomigrateTrue.Error())
 	}
 
-	if storeAutomigrateTrue.automigrateEnabled != true {
-		t.Fatalf("automigrateEnabled: Expected [true] received [%v]", storeAutomigrateTrue.automigrateEnabled)
+	sImplTrue := storeAutomigrateTrue.(*storeImplementation)
+	if sImplTrue.automigrateEnabled != true {
+		t.Fatalf("automigrateEnabled: Expected [true] received [%v]", sImplTrue.automigrateEnabled)
 	}
 }
 
@@ -101,8 +102,9 @@ func Test_Store_AutoMigrate(t *testing.T) {
 		t.Fatalf("automigrateEnabled: Expected [err] to be nill received [%v]", err.Error())
 	}
 
-	if store.automigrateEnabled != false {
-		t.Fatalf("automigrateEnabled: Expected [false] received [%v]", store.automigrateEnabled)
+	sImpl := store.(*storeImplementation)
+	if sImpl.automigrateEnabled != false {
+		t.Fatalf("automigrateEnabled: Expected [false] received [%v]", sImpl.automigrateEnabled)
 	}
 
 	err = store.MigrateUp(context.Background())
@@ -111,13 +113,10 @@ func Test_Store_AutoMigrate(t *testing.T) {
 		t.Fatalf("AutoMigrate Failure [%v]", err.Error())
 	}
 
-	if store.vaultTableName != "vault_automigrate" {
-		t.Fatalf("Expected vaultTableName [vault_automigrate] received [%v]", store.vaultTableName)
+	if store.GetVaultTableName() != "vault_automigrate" {
+		t.Fatalf("Expected vaultTableName [vault_automigrate] received [%v]", store.GetVaultTableName())
 	}
-	if store.db == nil {
-		t.Fatalf("DB Init Failure")
-	}
-	if store.automigrateEnabled != false {
+	if sImpl.automigrateEnabled != false {
 		t.Fatalf("Failure:  AutoMigrate")
 	}
 }
@@ -265,21 +264,23 @@ func Test_Store_EnableDebug(t *testing.T) {
 		t.Fatalf("NewStore: Expected [err] to be nil received [%v]", err.Error())
 	}
 
+	sImpl := store.(*storeImplementation)
+
 	// Verify initial debug state
-	if store.debugEnabled != false {
-		t.Fatalf("Expected debugEnabled to be false initially, got %v", store.debugEnabled)
+	if sImpl.debugEnabled != false {
+		t.Fatalf("Expected debugEnabled to be false initially, got %v", sImpl.debugEnabled)
 	}
 
 	// Enable debug
 	store.EnableDebug(true)
-	if store.debugEnabled != true {
-		t.Fatalf("Expected debugEnabled to be true after enabling, got %v", store.debugEnabled)
+	if sImpl.debugEnabled != true {
+		t.Fatalf("Expected debugEnabled to be true after enabling, got %v", sImpl.debugEnabled)
 	}
 
 	// Disable debug
 	store.EnableDebug(false)
-	if store.debugEnabled != false {
-		t.Fatalf("Expected debugEnabled to be false after disabling, got %v", store.debugEnabled)
+	if sImpl.debugEnabled != false {
+		t.Fatalf("Expected debugEnabled to be false after disabling, got %v", sImpl.debugEnabled)
 	}
 }
 
@@ -294,7 +295,7 @@ func Test_Store_DbDriverName(t *testing.T) {
 		VaultTableName:     "vault_driver_test",
 		VaultMetaTableName: "vault_meta",
 		DB:                 db,
-		DbDriverName:       "custom_driver",
+		DbDriverName:       "sqlite",
 		AutomigrateEnabled: false,
 	})
 
@@ -302,16 +303,17 @@ func Test_Store_DbDriverName(t *testing.T) {
 		t.Fatalf("NewStore: Expected [err] to be nil received [%v]", err.Error())
 	}
 
-	if store.dbDriverName != "custom_driver" {
-		t.Fatalf("Expected dbDriverName to be 'custom_driver', got %s", store.dbDriverName)
+	driverName := store.GetDbDriverName()
+	if driverName != "sqlite" {
+		t.Fatalf("Expected dbDriverName to be 'sqlite', got '%s'", driverName)
 	}
 
-	// Test with auto-detected driver name
+	// Test with empty driver name
 	store2, err := NewStore(NewStoreOptions{
 		VaultTableName:     "vault_driver_test2",
 		VaultMetaTableName: "vault_meta",
 		DB:                 db,
-		DbDriverName:       "", // Empty to test auto-detection
+		DbDriverName:       "",
 		AutomigrateEnabled: false,
 	})
 
@@ -319,35 +321,8 @@ func Test_Store_DbDriverName(t *testing.T) {
 		t.Fatalf("NewStore: Expected [err] to be nil received [%v]", err.Error())
 	}
 
-	// The driver name should be auto-detected
-	if store2.dbDriverName == "" {
-		t.Fatal("Expected dbDriverName to be auto-detected, got empty string")
-	}
-}
-
-func Test_Store_toQuerableContext(t *testing.T) {
-	db, err := initDB()
-	if err != nil {
-		t.Fatalf("initDB: Expected [err] to be nil received [%v]", err.Error())
-	}
-
-	store, err := NewStore(NewStoreOptions{
-		VaultTableName:     "vault_context_test",
-		VaultMetaTableName: "vault_meta",
-		DB:                 db,
-		AutomigrateEnabled: false,
-	})
-
-	if err != nil {
-		t.Fatalf("NewStore: Expected [err] to be nil received [%v]", err.Error())
-	}
-
-	// Test with regular context
-	ctx := context.Background()
-	qctx := store.toQuerableContext(ctx)
-
-	// Verify that the returned context is recognized as a QueryableContext
-	if !database.IsQueryableContext(qctx) {
-		t.Fatal("Expected QueryableContext from toQuerableContext")
+	driverName2 := store2.GetDbDriverName()
+	if driverName2 != "" {
+		t.Fatalf("Expected dbDriverName to be empty, got '%s'", driverName2)
 	}
 }

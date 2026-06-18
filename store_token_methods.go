@@ -7,7 +7,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/dracory/sb"
 	"github.com/dromara/carbon/v2"
 	"github.com/samber/lo"
 )
@@ -262,7 +261,7 @@ func (store *storeImplementation) TokenRead(ctx context.Context, token string, p
 
 	// Check if token has expired
 	expiresAt := entry.GetExpiresAt()
-	if expiresAt != "" && expiresAt != sb.MAX_DATETIME {
+	if expiresAt != "" && expiresAt != MAX_DATETIME {
 		expiryTime := carbon.Parse(expiresAt, carbon.UTC)
 		if !expiryTime.IsZero() && carbon.Now(carbon.UTC).Gt(expiryTime) {
 			return "", ErrTokenExpired
@@ -295,7 +294,7 @@ func (store *storeImplementation) TokenRenew(ctx context.Context, token string, 
 	}
 
 	if expiresAt.IsZero() {
-		entry.SetExpiresAt(sb.MAX_DATETIME)
+		entry.SetExpiresAt(MAX_DATETIME)
 	} else {
 		entry.SetExpiresAt(carbon.CreateFromStdTime(expiresAt).ToDateTimeString(carbon.UTC))
 	}
@@ -312,7 +311,7 @@ func (store *storeImplementation) TokensExpiredSoftDelete(ctx context.Context) (
 
 	for _, record := range records {
 		expiresAt := record.GetExpiresAt()
-		if expiresAt == "" || expiresAt == sb.MAX_DATETIME {
+		if expiresAt == "" || expiresAt == MAX_DATETIME {
 			continue
 		}
 
@@ -340,7 +339,7 @@ func (store *storeImplementation) TokensExpiredDelete(ctx context.Context) (coun
 
 	for _, record := range records {
 		expiresAt := record.GetExpiresAt()
-		if expiresAt == "" || expiresAt == sb.MAX_DATETIME {
+		if expiresAt == "" || expiresAt == MAX_DATETIME {
 			continue
 		}
 
@@ -466,7 +465,7 @@ func (store *storeImplementation) TokensRead(ctx context.Context, tokens []strin
 	for _, entry := range entries {
 		// Check if token has expired
 		expiresAt := entry.GetExpiresAt()
-		if expiresAt != "" && expiresAt != sb.MAX_DATETIME {
+		if expiresAt != "" && expiresAt != MAX_DATETIME {
 			expiryTime := carbon.Parse(expiresAt, carbon.UTC)
 			if !expiryTime.IsZero() && carbon.Now(carbon.UTC).Gt(expiryTime) {
 				continue // Skip expired tokens

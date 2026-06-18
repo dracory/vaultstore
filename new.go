@@ -4,14 +4,10 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"fmt"
+	"log/slog"
+	"os"
 
-	"github.com/dracory/database"
-
-	"gorm.io/driver/mysql"
-	"gorm.io/driver/postgres"
-	"gorm.io/driver/sqlite"
-	"gorm.io/gorm"
+	"github.com/dracory/neat"
 )
 
 // NewStoreOptions define the options for creating a new session store
@@ -33,7 +29,7 @@ type NewStoreOptions struct {
 }
 
 // NewStore creates a new entity store
-func NewStore(opts NewStoreOptions) (*storeImplementation, error) {
+func NewStore(opts NewStoreOptions) (StoreInterface, error) {
 	if opts.VaultTableName == "" {
 		return nil, errors.New("vault store: vaultTableName is required")
 	}
@@ -46,43 +42,23 @@ func NewStore(opts NewStoreOptions) (*storeImplementation, error) {
 		return nil, errors.New("vault store: DB is required")
 	}
 
-	dbDriverName := opts.DbDriverName
-	if dbDriverName == "" {
-		dbDriverName = database.DatabaseType(opts.DB)
-	}
-
 	// Set crypto config with secure defaults
 	cryptoConfig := opts.CryptoConfig
 	if cryptoConfig == nil {
 		cryptoConfig = DefaultCryptoConfig()
 	}
 
-	var dialector gorm.Dialector
-
-	dbType := database.DatabaseType(opts.DB)
-	switch dbType {
-	case "sqlite":
-		dialector = sqlite.New(sqlite.Config{Conn: opts.DB})
-	case "mysql":
-		dialector = mysql.New(mysql.Config{Conn: opts.DB})
-	case "postgres", "postgresql":
-		dialector = postgres.New(postgres.Config{Conn: opts.DB})
-	default:
-		return nil, fmt.Errorf("unsupported database connection: %s", dbType)
-	}
-
-	gormDB, err := gorm.Open(dialector, &gorm.Config{})
+	neatDB, err := neat.NewFromSQLDB(opts.DB)
 	if err != nil {
 		return nil, err
 	}
+
+	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 
 	store := &storeImplementation{
 		vaultTableName:           opts.VaultTableName,
 		vaultMetaTableName:       opts.VaultMetaTableName,
 		automigrateEnabled:       opts.AutomigrateEnabled,
-		db:                       opts.DB,
-		gormDB:                   gormDB,
-		dbDriverName:             dbDriverName,
 		debugEnabled:             opts.DebugEnabled,
 		cryptoConfig:             cryptoConfig,
 		parallelThreshold:        opts.ParallelThreshold,
@@ -92,6 +68,9 @@ func NewStore(opts NewStoreOptions) (*storeImplementation, error) {
 		passwordRequireUppercase: opts.PasswordRequireUppercase,
 		passwordRequireNumbers:   opts.PasswordRequireNumbers,
 		passwordRequireSymbols:   opts.PasswordRequireSymbols,
+		db:                       neatDB,
+		dbDriverName:             opts.DbDriverName,
+		logger:                   logger,
 	}
 
 	if store.automigrateEnabled {

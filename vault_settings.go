@@ -3,52 +3,78 @@ package vaultstore
 import (
 	"context"
 	"errors"
-
-	"gorm.io/gorm"
 )
 
 // GetVaultSetting retrieves a generic setting value from vault settings
 func (store *storeImplementation) GetVaultSetting(ctx context.Context, key string) (string, error) {
-	var meta gormVaultMeta
-	err := store.gormDB.WithContext(ctx).Table(store.vaultMetaTableName).
+	type metaRow struct {
+		ID         string `db:"id"`
+		ObjectType string `db:"object_type"`
+		ObjectID   string `db:"object_id"`
+		Key        string `db:"meta_key"`
+		Value      string `db:"meta_value"`
+	}
+
+	var rows []metaRow
+	err := store.db.Query().
+		Table(store.vaultMetaTableName).
 		Where("object_type = ? AND object_id = ? AND meta_key = ?", OBJECT_TYPE_VAULT_SETTINGS, VAULT_SETTINGS_ID, key).
-		First(&meta).Error
+		Get(&rows)
 
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return "", gorm.ErrRecordNotFound
-		}
 		return "", err
 	}
 
-	return meta.Value, nil
+	if len(rows) == 0 {
+		return "", errors.New("setting not found")
+	}
+
+	return rows[0].Value, nil
 }
 
 // SetVaultSetting sets a generic setting value in vault settings
 func (store *storeImplementation) SetVaultSetting(ctx context.Context, key, value string) error {
-	// Check if setting already exists
-	var existing gormVaultMeta
-	err := store.gormDB.WithContext(ctx).Table(store.vaultMetaTableName).
-		Where("object_type = ? AND object_id = ? AND meta_key = ?", OBJECT_TYPE_VAULT_SETTINGS, VAULT_SETTINGS_ID, key).
-		First(&existing).Error
-
-	if err == nil {
-		// Update existing
-		existing.Value = value
-		return store.gormDB.WithContext(ctx).Table(store.vaultMetaTableName).Save(&existing).Error
+	type metaRow struct {
+		ID         string `db:"id"`
+		ObjectType string `db:"object_type"`
+		ObjectID   string `db:"object_id"`
+		Key        string `db:"meta_key"`
+		Value      string `db:"meta_value"`
 	}
 
-	if !errors.Is(err, gorm.ErrRecordNotFound) {
+	var rows []metaRow
+	err := store.db.Query().
+		Table(store.vaultMetaTableName).
+		Where("object_type = ? AND object_id = ? AND meta_key = ?", OBJECT_TYPE_VAULT_SETTINGS, VAULT_SETTINGS_ID, key).
+		Get(&rows)
+
+	if err != nil {
+		return err
+	}
+
+	if len(rows) > 0 {
+		// Update existing
+		_, err := store.db.Query().
+			Table(store.vaultMetaTableName).
+			Where("id = ?", rows[0].ID).
+			Update(map[string]any{
+				"meta_value": value,
+			})
 		return err
 	}
 
 	// Create new
-	meta := &gormVaultMeta{
-		ObjectType: OBJECT_TYPE_VAULT_SETTINGS,
-		ObjectID:   VAULT_SETTINGS_ID,
-		Key:        key,
-		Value:      value,
-	}
+	meta := NewMeta().
+		SetObjectType(OBJECT_TYPE_VAULT_SETTINGS).
+		SetObjectID(VAULT_SETTINGS_ID).
+		SetKey(key).
+		SetValue(value)
 
-	return store.gormDB.WithContext(ctx).Table(store.vaultMetaTableName).Create(meta).Error
+	return store.db.Query().Table(store.vaultMetaTableName).Create(map[string]any{
+		COLUMN_ID:          meta.GetID(),
+		COLUMN_OBJECT_TYPE: meta.GetObjectType(),
+		COLUMN_OBJECT_ID:   meta.GetObjectID(),
+		COLUMN_META_KEY:    meta.GetKey(),
+		COLUMN_META_VALUE:  meta.GetValue(),
+	})
 }
