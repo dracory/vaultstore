@@ -9,7 +9,6 @@ import (
 	"github.com/dracory/neat"
 	contractsorm "github.com/dracory/neat/contracts/database/orm"
 	contractsschema "github.com/dracory/neat/contracts/database/schema"
-	"github.com/dromara/carbon/v2"
 	"github.com/samber/lo"
 )
 
@@ -200,7 +199,8 @@ func (store *storeImplementation) TokensReadToResolvedMap(ctx context.Context, k
 
 // buildQuery builds a neat query from the record query interface.
 func (store *storeImplementation) buildQuery(query RecordQueryInterface) contractsorm.Query {
-	q := store.db.Query()
+	// Use Model() to enable neat's automatic soft delete handling via SoftDeletesMaxDate
+	q := store.db.Query().Model(&recordImplementation{})
 
 	if query == nil {
 		return q
@@ -246,12 +246,9 @@ func (store *storeImplementation) buildQuery(query RecordQueryInterface) contrac
 		q = q.OrderBy(query.GetOrderBy(), sortOrder)
 	}
 
-	// Handle soft delete filtering
+	// Handle soft delete filtering via neat's automatic handling (SoftDeletesMaxDate)
 	if query.IsSoftDeletedIncludeSet() && query.GetSoftDeletedInclude() {
 		q = q.WithSoftDeleted()
-	} else {
-		// By default, filter out soft-deleted records
-		q = q.Where(COLUMN_SOFT_DELETED_AT+" = ?", carbon.Parse(MAX_DATETIME, carbon.UTC).StdTime())
 	}
 
 	return q
