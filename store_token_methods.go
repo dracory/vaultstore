@@ -457,7 +457,7 @@ func (store *storeImplementation) TokensRead(ctx context.Context, tokens []strin
 			return entry.GetToken()
 		})
 
-		_, missingTokens := lo.Difference(tokens, entryTokens)
+		missingTokens, _ := lo.Difference(tokens, entryTokens)
 
 		return values, errors.New("missing tokens: " + strings.Join(missingTokens, ", "))
 	}

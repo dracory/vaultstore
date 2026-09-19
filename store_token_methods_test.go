@@ -898,6 +898,34 @@ func Test_Store_TokensReadToResolvedMap(t *testing.T) {
 	}
 }
 
+func Test_TokensRead_NamesMissingTokens(t *testing.T) {
+	store, err := initStore()
+	if err != nil {
+		t.Fatalf("Test_TokensRead_NamesMissingTokens: Expected [err] to be nil received [%v]", err.Error())
+	}
+
+	ctx := context.Background()
+	password := "test_password_that_is_long_enough_for_security_32chars"
+
+	token1, err := store.TokenCreate(ctx, "value1", password, 20)
+	if err != nil {
+		t.Fatalf("Failed to create token1: [%v]", err.Error())
+	}
+
+	// Two requested tokens do not exist; the error must name them so the
+	// caller can tell which tokens were missing — an empty list is useless.
+	_, err = store.TokensRead(ctx, []string{token1, "tk_missing_abc", "tk_missing_xyz"}, password)
+	if err == nil {
+		t.Fatal("Expected error for non-existent tokens, got nil")
+	}
+	if !strings.Contains(err.Error(), "tk_missing_abc") {
+		t.Fatalf("Expected error to name 'tk_missing_abc', got: [%v]", err.Error())
+	}
+	if !strings.Contains(err.Error(), "tk_missing_xyz") {
+		t.Fatalf("Expected error to name 'tk_missing_xyz', got: [%v]", err.Error())
+	}
+}
+
 func Test_Store_TokensReadToResolvedMap_SingleToken(t *testing.T) {
 	store, err := initStore()
 	if err != nil {
