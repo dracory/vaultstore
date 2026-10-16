@@ -2,17 +2,17 @@ package vaultstore
 
 import (
 	"time"
+	"uuid"
 
 	"github.com/dracory/neat/database/orm"
 	"github.com/dracory/neat/database/soft_delete"
-	neatuid "github.com/dracory/neat/support/uid"
 	"github.com/dromara/carbon/v2"
 )
 
 // == CLASS =====================================================================
 
 type recordImplementation struct {
-	orm.ShortID
+	orm.StringID
 
 	TokenField     string    `db:"vault_token"`
 	ValueField     string    `db:"vault_value"`
@@ -26,7 +26,7 @@ type recordImplementation struct {
 
 func NewRecord() RecordInterface {
 	o := &recordImplementation{}
-	o.SetID(neatuid.GenerateShortID())
+	o.SetID(uuid.NewV7().String())
 	o.SetToken("")
 	o.SetValue("")
 	o.SetCreatedAt(carbon.Now(carbon.UTC).ToDateTimeString(carbon.UTC))
@@ -59,11 +59,11 @@ func NewRecordFromExistingData(data map[string]string) RecordInterface {
 // == SETTERS AND GETTERS =======================================================
 
 func (o *recordImplementation) GetID() string {
-	return o.ShortID.ID
+	return o.StringID.ID
 }
 
 func (o *recordImplementation) SetID(id string) RecordInterface {
-	o.ShortID.ID = id
+	o.StringID.ID = id
 	return o
 }
 

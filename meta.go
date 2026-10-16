@@ -1,8 +1,6 @@
 package vaultstore
 
-import (
-	neatuid "github.com/dracory/neat/support/uid"
-)
+import "uuid"
 
 // == CLASS =====================================================================
 
@@ -18,7 +16,7 @@ type metaImplementation struct {
 
 func NewMeta() MetaInterface {
 	o := &metaImplementation{}
-	o.SetID(neatuid.GenerateShortID())
+	o.SetID(uuid.NewV7().String())
 	o.SetObjectType("")
 	o.SetObjectID("")
 	o.SetKey("")
