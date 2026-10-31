@@ -3,7 +3,7 @@
 **Date**: 2026-02-04  
 **Reviewer**: Senior Principal Engineer  
 **Codebase**: vaultstore  
-**Language/Framework**: Go (GORM, SQLite)  
+**Language/Framework**: Go (neat, SQLite)  
 **Commit/Branch**: Current working tree
 
 ---
@@ -153,19 +153,21 @@ Use `sync.WaitGroup` properly to ensure workers exit before returning, and consi
 **Category**: Correctness  
 **Location**: `store_record_methods.go:39-41`, `203-205`
 
-**Description**:  
-The soft delete filter uses string comparison with datetime strings:
+**Status**: **Resolved** - superseded by the migration to `github.com/dracory/neat`. Soft deletes are now handled automatically by neat (`SoftDeletesMaxDate`, see `buildQuery` in `store.go`); the raw string comparison no longer exists, and `MAX_DATETIME` is now a local constant in `constants.go` (`9999-12-31 23:59:59`).
+
+**Description (pre-migration)**:  
+The soft delete filter used string comparison with datetime strings:
 ```go
 db = db.Where(COLUMN_SOFT_DELETED_AT+" > ?", carbon.Now(carbon.UTC).ToDateTimeString())
 ```
 
-This relies on consistent string formatting between stored values and the query. If `sb.MAX_DATETIME` format differs from `carbon.Now()` format, soft-deleted records may be incorrectly included or excluded.
+This relied on consistent string formatting between stored values and the query. If `MAX_DATETIME` format differed from `carbon.Now()` format, soft-deleted records could be incorrectly included or excluded.
 
 **Impact**:  
-Potential data leakage or unexpected behavior with soft-deleted records.
+Potential data leakage or unexpected behavior with soft-deleted records (pre-migration).
 
 **Recommended Fix**:  
-Use a sentinel value (like empty string or specific constant) for non-soft-deleted records and NULL/IS NULL checks, or ensure format consistency.
+Applied - soft-delete filtering is now delegated to neat's `SoftDeletesMaxDate` handling.
 
 ---
 
@@ -197,7 +199,7 @@ return "", ErrTokenInvalid  // Same error for not found, expired, or decrypt fai
 
 2. **`constants.go:49-50`** - `BCRYPT_COST` constant is defined but unused after migration to Argon2id. Should be removed or marked deprecated.
 
-3. **`store_new.go:37-42`** - SQLite is hardcoded as the GORM dialect. While this works for the intended use case, it limits portability to other databases.
+3. **`store_new.go`** - ~~SQLite is hardcoded as the GORM dialect~~ **Resolved**: the store now uses `neat.NewFromSQLDB` with a configurable `DbDriverName`; dialect portability is delegated to neat (SQLite, MySQL, PostgreSQL, MSSQL).
 
 ### Documentation
 
@@ -228,21 +230,18 @@ return "", ErrTokenInvalid  // Same error for not found, expired, or decrypt fai
 
 | Package | Version | Purpose | Assessment |
 |---------|---------|---------|------------|
-| github.com/dracory/database | v0.6.0 | Database abstraction | Internal - assumed stable |
-| github.com/dracory/dataobject | v1.6.0 | Data object utilities | Internal - assumed stable |
-| github.com/dracory/sb | v0.15.0 | String utilities | Internal - assumed stable |
-| github.com/dracory/uid | v1.9.0 | Unique ID generation | Internal - assumed stable |
-| github.com/dromara/carbon/v2 | v2.6.16 | Date/time handling | Well-maintained |
-| github.com/glebarez/sqlite | v1.11.0 | Pure Go SQLite | Good choice (no CGO) |
-| github.com/google/uuid | v1.6.0 | UUID generation | Standard library |
-| github.com/samber/lo | v1.52.0 | Lodash-style utilities | Popular, well-maintained |
-| golang.org/x/crypto | v0.47.0 | Argon2, crypto primitives | Actively maintained |
-| gorm.io/gorm | v1.31.1 | ORM | Standard for Go |
+| github.com/dracory/neat | v0.60.1 | Database layer (ORM, multi-dialect) | Internal - replaces GORM/sb/database |
+| github.com/dromara/carbon/v2 | v2.7.0 | Date/time handling | Well-maintained |
+| github.com/samber/lo | v1.53.0 | Lodash-style utilities | Popular, well-maintained |
+| golang.org/x/crypto | v0.58.0 | Argon2, crypto primitives | Actively maintained |
+| modernc.org/sqlite | v1.61.1 | Pure Go SQLite driver | Good choice (no CGO) |
+
+*Indirect (notable): `github.com/google/uuid` v1.6.0, `github.com/spf13/cast` v1.10.0, `golang.org/x/exp`, `golang.org/x/sys`, `golang.org/x/text`, `modernc.org/libc`, etc. GORM and the former internal deps (`database`, `dataobject`, `sb`, `uid`) are no longer in the build graph - `neat` is now the sole database layer.*
 
 ### Vulnerability Assessment
 - No known vulnerabilities in dependencies
 - Using latest stable versions for crypto packages
-- SQLite driver is pure Go (glebarez) avoiding CGO complications
+- SQLite driver is pure Go (modernc.org/sqlite) avoiding CGO complications
 
 ---
 

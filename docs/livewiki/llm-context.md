@@ -4,8 +4,8 @@ page-type: overview
 summary: Complete codebase summary optimized for LLM consumption including pure encryption bulk rekey features.
 tags: [llm, context, summary, bulk-rekey, cryptoconfig]
 created: 2026-02-03
-updated: 2026-02-04
-version: 1.2.0
+updated: 2026-10-31
+version: 1.3.0
 ---
 
 # LLM Context: VaultStore
@@ -16,11 +16,10 @@ VaultStore is a secure value storage (data-at-rest) implementation for Go, desig
 
 ## Key Technologies
 
-- **Go 1.25+** - Programming language
-- **GORM** - ORM for database operations
-- **sb (SQL Builder)** - SQL query building
+- **Go 1.27+** - Programming language
+- **neat** - Database layer (ORM + schema, multi-dialect)
 - **AES-256-GCM** - Encryption algorithm
-- **PBKDF2** - Password-based key derivation
+- **Argon2id** - Password-based key derivation
 - **SQLite/PostgreSQL/MySQL** - Database-agnostic support
 - **crypto/rand** - Cryptographically secure randomness
 
@@ -36,21 +35,24 @@ vaultstore/
 │   │   │   ├── query_interface.md
 │   │   │   ├── record_management.md
 │   │   │   ├── token_operations.md
-│   │   │   └── bulk_rekey.md         # Pure encryption bulk rekey
+│   │   │   └── tokens_change_password.md  # Pure encryption bulk rekey
 │   │   └── *.md            # Other wiki pages
 │   ├── proposals/          # Design proposals
 │   └── *.md                # Other docs
 ├── interfaces.go           # Core interfaces
 ├── constants.go            # Constants and CryptoConfig
-├── store_*.go              # Store implementation
-├── record_*.go             # Record operations
-├── token_*.go              # Token operations
-├── encdec*.go              # Encryption/decryption
+├── new.go                  # Store factory (NewStore) and options
+├── store.go                # Store implementation, migrations, query builder
+├── store_record_methods.go # Record CRUD operations
+├── store_record_query.go   # Query execution and filtering
+├── store_token_methods.go  # Token lifecycle management
+├── store_tokens_change_password_methods.go # Pure encryption bulk rekey
+├── record.go               # Record implementation (neat soft-delete model)
+├── meta.go                 # Vault metadata (password identities, settings)
+├── vault_settings.go       # Vault settings storage
+├── encdec.go               # Encryption/decryption (AES-256-GCM + Argon2id)
 ├── functions.go            # Utility functions
-├── gorm_model.go           # GORM models
 ├── is_token.go             # Token validation
-├── sqls.go                 # SQL queries
-├── meta_*.go               # Metadata operations
 ├── *_test.go               # Test files
 ├── go.mod                  # Go module
 └── README.md               # Project README
@@ -83,14 +85,13 @@ vaultstore/
 ### Core Interfaces (`interfaces.go`)
 Defines `StoreInterface`, `RecordInterface`, and `RecordQueryInterface` - the foundation of the entire system
 
-### Store Implementation (`store_*.go`)
-- `store_new.go` - Factory function for creating store instances
-- `store_new_options.go` - NewStoreOptions struct with CryptoConfig and ParallelThreshold
-- `store_implementation.go` - Core store logic and database operations
+### Store Implementation (`store*.go`, `new.go`)
+- `new.go` - Factory function (`NewStore`) and `NewStoreOptions` struct with CryptoConfig and ParallelThreshold
+- `store.go` - Core store logic, migrations, and query builder
 - `store_record_methods.go` - Record CRUD operations
 - `store_token_methods.go` - Token lifecycle management
-- `store_record_query.go` - Query execution and SQL generation
-- `store_bulk_rekey_methods.go` - Pure encryption bulk rekey with parallel processing
+- `store_record_query.go` - Query execution and filtering
+- `store_tokens_change_password_methods.go` - Pure encryption bulk rekey with parallel processing
 
 ### Encryption (`encdec*.go`, `constants.go`)
 - `encdec.go` - Main encryption/decryption functions using AES-256-GCM with Argon2id
@@ -98,10 +99,9 @@ Defines `StoreInterface`, `RecordInterface`, and `RecordQueryInterface` - the fo
 - `encdec_test.go` - Encryption functionality tests
 - `encdec_v2_test.go` - Enhanced encryption tests
 
-### Metadata (`meta_*.go`)
-- `meta_implementation.go` - Metadata operations implementation
-- `meta_helpers.go` - Metadata helper functions
-- `gorm_model.go` - GORM models including VaultMeta
+### Metadata (`meta.go`, `vault_settings.go`)
+- `meta.go` - Metadata operations for password identities and vault settings
+- `vault_settings.go` - Vault settings storage (meta table)
 
 ### Interfaces (`interfaces.go`)
 Defines `StoreInterface`, `RecordInterface`, `RecordQueryInterface`, and `MetaInterface` - the foundation of the entire system
@@ -117,7 +117,6 @@ vault, err := vaultstore.NewStore(vaultstore.NewStoreOptions{
     DB:                      db,
     AutomigrateEnabled:      true,
     DebugEnabled:            false,
-    PasswordIdentityEnabled: true,              // Enable for bulk rekey optimization
     CryptoConfig:            vaultstore.DefaultCryptoConfig(), // Or HighSecurityCryptoConfig(), LightweightCryptoConfig()
 })
 ```
@@ -156,28 +155,24 @@ records, err := vault.RecordList(ctx, query)
 ## Database Schema
 
 The vault table stores encrypted data with the following structure (database-agnostic):
-- `id` (TEXT PRIMARY KEY) - Unique record identifier
-- `token` (TEXT UNIQUE NOT NULL) - Access token
-- `value` (TEXT NOT NULL) - Encrypted stored value
-- `password_hash` (TEXT) - Optional password hash
-- `created_at` (TEXT NOT NULL) - Creation timestamp
-- `updated_at` (TEXT NOT NULL) - Last update timestamp
-- `expires_at` (TEXT) - Optional expiration timestamp
-- `soft_deleted_at` (TEXT) - Soft delete timestamp
-- `data` (TEXT) - JSON metadata
+- `id` (STRING PRIMARY KEY, 40) - Unique record identifier
+- `token` (STRING UNIQUE, 40) - Access token
+- `value` (TEXT) - Encrypted stored value
+- `created_at` (DATETIME) - Creation timestamp
+- `updated_at` (DATETIME) - Last update timestamp
+- `expires_at` (DATETIME) - Optional expiration timestamp
+- `soft_deleted_at` (DATETIME) - Soft delete timestamp (max-date sentinel for "not deleted")
 
-**Note**: The schema is database-agnostic and compatible with SQLite, PostgreSQL, and MySQL through GORM.
+**Note**: The schema is database-agnostic and compatible with SQLite, PostgreSQL, and MySQL through neat.
 
 ### Metadata Table (vault_meta)
 
 Stores password identities and vault settings:
-- `id` (INTEGER PRIMARY KEY) - Unique metadata ID
-- `object_type` (TEXT NOT NULL) - 'password_identity', 'record', or 'vault'
-- `object_id` (TEXT NOT NULL) - Unique object identifier
-- `meta_key` (TEXT NOT NULL) - Key for the metadata value
+- `id` (STRING PRIMARY KEY, 40) - Unique metadata ID
+- `object_type` (STRING, 50) - 'password_identity', 'record', or 'vault'
+- `object_id` (STRING, 64) - Unique object identifier
+- `meta_key` (STRING, 50) - Key for the metadata value
 - `meta_value` (TEXT) - The metadata value
-- `created_at` (TEXT NOT NULL) - Creation timestamp
-- `updated_at` (TEXT NOT NULL) - Last update timestamp
 
 ## Security Implementation
 
@@ -186,7 +181,7 @@ Stores password identities and vault settings:
 3. **Random Generation** - crypto/rand for tokens, salts, and nonces
 4. **Authentication** - Built-in integrity checking via GCM authentication tags
 5. **Token Security** - Cryptographically secure random token generation
-6. **Password Hashing** - Bcrypt or Argon2id for password identity verification
+6. **Password Hashing** - Argon2id for password identity verification
 
 ## Configuration Options
 
@@ -194,14 +189,16 @@ Store configuration includes:
 - `VaultTableName` - Database table name for vault records (required)
 - `VaultMetaTableName` - Database table name for metadata (required for identity features)
 - `DB` - Database connection (required)
+- `DbDriverName` - Database driver specification (optional)
 - `AutomigrateEnabled` - Automatic schema migration (optional)
 - `DebugEnabled` - Debug logging (optional)
-- `DbDriverName` - Database driver specification (optional)
 - `CryptoConfig` - Custom cryptographic parameters (optional)
-- `PasswordIdentityEnabled` - Enable identity-based password management (optional)
+- `ParallelThreshold` - Threshold for switching to parallel bulk rekey processing (optional)
+- `PasswordAllowEmpty`, `PasswordMinLength`, `PasswordRequireLowercase/Uppercase/Numbers/Symbols` - Password policy (optional)
 
 ## Changelog
 
+- **v1.3.0** (2026-10-31): Refreshed for the neat migration - replaced GORM/sb/PBKDF2 references, updated dependencies, schema, and file layout.
 - **v1.1.0** (2026-02-03): Added identity-based password management, CryptoConfig, metadata table, and BulkRekey documentation.
 - **v1.0.0** (2026-02-03): Initial LLM context documentation
 
@@ -226,24 +223,13 @@ Comprehensive test coverage including:
 ## Dependencies
 
 External dependencies:
-- `github.com/dracory/database` - Database utilities
-- `github.com/dracory/dataobject` - Data object utilities
-- `github.com/dracory/sb` - SQL builder utilities
-- `github.com/dracory/uid` - UID generation
+- `github.com/dracory/neat` - Database layer (ORM, schema, multi-dialect)
 - `github.com/dromara/carbon/v2` - Date/time utilities
-- `github.com/glebarez/sqlite` - SQLite driver
 - `github.com/samber/lo` - Functional programming utilities
-- `golang.org/x/crypto` - Cryptographic functions
-- `gorm.io/gorm` - ORM framework
+- `golang.org/x/crypto` - Cryptographic functions (Argon2id, AES-GCM)
+- `modernc.org/sqlite` - Pure Go SQLite driver (no CGO)
 
-## Configuration Options
-
-Store configuration includes:
-- `VaultTableName` - Database table name (required)
-- `DB` - Database connection (required)
-- `AutomigrateEnabled` - Automatic schema migration (optional)
-- `DebugEnabled` - Debug logging (optional)
-- `DbDriverName` - Database driver specification (optional)
+Indirect (notable): `github.com/google/uuid` (UUID generation), `github.com/spf13/cast`, `golang.org/x/exp`, `golang.org/x/sys`, `golang.org/x/text`, `modernc.org/libc`.
 
 ## Performance Considerations
 
@@ -251,7 +237,7 @@ Store configuration includes:
 2. **Connection Pooling** - Configurable database connection pooling
 3. **Query Optimization** - Column selection, result limiting, efficient filtering
 4. **Memory Management** - Lazy loading, change tracking, resource cleanup
-5. **Encryption Performance** - Hardware acceleration support, configurable PBKDF2 iterations
+5. **Encryption Performance** - Configurable Argon2id parameters via CryptoConfig
 
 ## Use Cases
 
@@ -269,7 +255,7 @@ The system follows layered architecture with:
 - **Application Layer** - User applications
 - **VaultStore Library** - Core functionality
 - **Core Services** - Encryption, validation, migration
-- **Data Layer** - GORM ORM, database drivers, databases
+- **Data Layer** - neat (database layer), database drivers, databases
 
 ## Extension Points
 
